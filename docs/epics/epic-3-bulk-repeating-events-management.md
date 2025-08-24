@@ -11,19 +11,30 @@
 - Current relevant functionality: Epic 1과 Epic 2에서 구현된 기본 및 고급 반복 일정 기능이 완성되어 있으며, 사용자는 개별 반복 일정을 생성, 수정, 삭제할 수 있습니다.
 - Technology stack: React 19.1.0, TypeScript, Express.js, Material-UI, Vite, Vitest
 - Integration points: 기존 반복 일정 생성/수정/삭제 로직, 캘린더 뷰, 일정 관리 시스템, 서버 API
+- Backend changes: 새로운 `/api/events-list` 엔드포인트가 추가되어 일괄 작업을 지원합니다.
 
 **Enhancement Details:**
 
-- What's being added/changed: 반복 일정의 모든 일정을 일괄적으로 수정하거나 삭제할 수 있는 기능을 기존 반복 일정 시스템에 추가
-- How it integrates: 기존 반복 일정 관리 로직을 확장하여 일괄 작업을 지원하고, 사용자 인터페이스를 개선하여 대량의 반복 일정을 효율적으로 관리할 수 있도록 함
-- Success criteria: 사용자가 반복 일정의 모든 일정을 선택하여 일괄 수정하거나 삭제할 수 있고, 작업 후 성공 메시지가 표시됨
+- What's being added/changed: 
+  1. 반복 일정의 모든 일정을 일괄적으로 수정하거나 삭제할 수 있는 기능을 기존 반복 일정 시스템에 추가
+  2. 새로운 `/api/events-list` 엔드포인트를 통해 서버 측에서 일괄 작업 지원
+  3. 반복 일정 그룹화를 위한 repeat.id 시스템 도입
+- How it integrates: 
+  1. 기존 반복 일정 관리 로직을 확장하여 일괄 작업을 지원
+  2. 사용자 인터페이스를 개선하여 대량의 반복 일정을 효율적으로 관리
+  3. 새로운 API 엔드포인트를 통해 서버와 통합
+- Success criteria: 
+  1. 사용자가 반복 일정의 모든 일정을 선택하여 일괄 수정하거나 삭제할 수 있음
+  2. 반복 일정이 repeat.id로 올바르게 그룹화되어 관리됨
+  3. 일괄 작업 후 성공 메시지가 표시됨
 
 ## Stories
 
 List 1-3 focused stories that complete the epic:
 
-1. **Story 1:** 반복 일정 일괄 수정 기능 구현 - 반복 일정의 모든 일정을 일괄적으로 수정하는 기능
-2. **Story 2:** 반복 일정 일괄 삭제 기능 구현 - 반복 일정의 모든 일정을 일괄적으로 삭제하는 기능
+1. **Story 1:** 반복 일정 그룹화 시스템 구현 - repeat.id를 통한 반복 일정 그룹화 및 API 통합
+2. **Story 2:** 반복 일정 일괄 수정 기능 구현 - 반복 일정의 모든 일정을 일괄적으로 수정하는 기능
+3. **Story 3:** 반복 일정 일괄 삭제 기능 구현 - 반복 일정의 모든 일정을 일괄적으로 삭제하는 기능
 
 ## Compatibility Requirements
 
@@ -34,19 +45,37 @@ List 1-3 focused stories that complete the epic:
 
 ## Risk Mitigation
 
-- **Primary Risk:** 일괄 작업의 복잡성으로 인한 데이터 일관성 문제 및 기존 반복 일정 기능과의 충돌
-- **Mitigation:** Epic 1과 Epic 2의 안정적인 기능을 기반으로 구현, 각 Story마다 기존 기능 검증, 철저한 테스트를 통한 안정성 확보, 데이터 무결성 검증 로직 추가
-- **Rollback Plan:** 각 Story 완료 후 기존 반복 일정 기능 테스트를 통한 검증, 문제 발생 시 해당 Story의 변경사항만 롤백, 데이터 백업 및 복구 메커니즘 구현
+- **Primary Risk:** 
+  1. 일괄 작업의 복잡성으로 인한 데이터 일관성 문제
+  2. 기존 반복 일정 기능과의 충돌
+  3. 새로운 API 엔드포인트와 repeat.id 시스템의 안정성
+- **Mitigation:** 
+  1. Epic 1과 Epic 2의 안정적인 기능을 기반으로 구현
+  2. 각 Story마다 기존 기능 검증
+  3. 철저한 테스트를 통한 안정성 확보
+  4. 데이터 무결성 검증 로직 추가
+  5. API 엔드포인트의 단계적 도입 및 검증
+- **Rollback Plan:** 
+  1. 각 Story 완료 후 기존 반복 일정 기능 테스트를 통한 검증
+  2. 문제 발생 시 해당 Story의 변경사항만 롤백
+  3. 데이터 백업 및 복구 메커니즘 구현
+  4. API 변경사항에 대한 버전 관리 및 롤백 전략 수립
 
 ## Definition of Done
 
 - [ ] 모든 Story가 수용 기준을 충족하여 완료됨
 - [ ] Epic 1과 Epic 2의 기본 및 고급 반복 일정 기능이 정상 동작함을 확인
+- [ ] 새로운 API 엔드포인트가 정상적으로 동작함
+  - [ ] POST `/api/events-list`
+  - [ ] PUT `/api/events-list`
+  - [ ] DELETE `/api/events-list`
+- [ ] repeat.id 시스템이 올바르게 구현되고 동작함
 - [ ] 일괄 수정 및 일괄 삭제 기능이 정상 동작함
 - [ ] 통합 지점이 올바르게 작동함
 - [ ] 기존 기능에 대한 회귀가 없음
 - [ ] 일괄 관리 기능 관련 문서화가 적절히 업데이트됨
 - [ ] 데이터 무결성이 보장됨
+- [ ] API 문서화가 완료됨
 
 ## Technical Integration Details
 
@@ -57,10 +86,21 @@ List 1-3 focused stories that complete the epic:
 
 **Backend Integration:**
 - 새로운 `/api/events-list` 엔드포인트를 통한 일괄 작업 처리:
-  - POST: 여러 반복 일정 한 번에 생성
-  - PUT: 여러 반복 일정 한 번에 수정
-  - DELETE: 여러 반복 일정 한 번에 삭제
-- 일괄 작업 정보를 포함한 데이터 저장 구조 확장
+  - POST `/api/events-list`: 여러 반복 일정 한 번에 생성
+    - 요청: `{ events: Event[] }`
+    - 응답: 생성된 이벤트 배열
+    - 모든 이벤트에 동일한 repeat.id 할당
+  - PUT `/api/events-list`: 여러 반복 일정 한 번에 수정
+    - 요청: `{ events: Event[] }`
+    - 응답: 수정된 이벤트 배열
+    - repeat.id를 기준으로 연관된 모든 이벤트 수정
+  - DELETE `/api/events-list`: 여러 반복 일정 한 번에 삭제
+    - 요청: `{ eventIds: string[] }`
+    - 응답: 204 No Content
+    - repeat.id를 기준으로 연관된 모든 이벤트 삭제
+- 일괄 작업 정보를 포함한 데이터 저장 구조 확장:
+  - Event 타입에 repeat.id 필드 추가
+  - 연관된 반복 일정들을 그룹화하기 위한 식별자로 사용
 - JSON 파일 기반 데이터 저장 구조 유지
 - 데이터 무결성을 보장하는 검증 로직 추가
 

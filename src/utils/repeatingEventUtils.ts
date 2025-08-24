@@ -151,11 +151,6 @@ export function validateRepeatSettings(repeatInfo: RepeatInfo): boolean {
     endDate.setHours(0, 0, 0, 0);
     today.setHours(0, 0, 0, 0);
 
-    // 디버깅을 위한 로그
-    console.log('End date:', endDate.toISOString());
-    console.log('Today:', today.toISOString());
-    console.log('Comparison result:', endDate >= today);
-
     if (endDate < today) {
       return false;
     }
