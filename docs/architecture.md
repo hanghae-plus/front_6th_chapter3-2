@@ -418,15 +418,113 @@ src/
 
 ---
 
-## 13. 체크리스트 결과 보고서
+## 13. TDD 개발 가이드
+
+### 13.1 TDD 개발 원칙
+
+#### Red-Green-Refactor 사이클
+1. **Red**: 실패하는 테스트 작성
+2. **Green**: 테스트를 통과하는 최소한의 코드 작성
+3. **Refactor**: 코드 개선 (기능 변경 없이)
+
+#### 핵심 규칙
+- **테스트 우선**: 구현 코드보다 테스트 코드를 먼저 작성
+- **최소한의 코드**: 테스트를 통과하는 최소한의 코드만 작성
+- **지속적 리팩토링**: 각 단계마다 코드 품질 개선
+
+### 13.2 개발 워크플로우
+
+#### 일일 개발 사이클
+1. **아침**: 오늘 구현할 기능의 테스트 작성
+2. **오후**: 테스트를 통과하는 코드 구현
+3. **저녁**: 코드 리팩토링 및 내일 테스트 계획
+
+#### 스토리별 완료 체크리스트
+- [ ] 모든 테스트 케이스 작성 완료
+- [ ] 테스트 통과 확인
+- [ ] 코드 리팩토링 완료
+- [ ] 기존 기능 회귀 테스트 통과
+- [ ] 백엔드 변경 없음 확인
+
+### 13.3 테스트 작성 가이드
+
+#### 테스트 파일 구조
+```typescript
+// src/__tests__/utils/repeatingEventUtils.spec.ts
+import { describe, it, expect, beforeEach } from 'vitest';
+import { 
+  calculateRepeatingDates, 
+  validateRepeatSettings, 
+  generateEventInstances 
+} from '../../utils/repeatingEventUtils';
+
+describe('RepeatingEventUtils', () => {
+  // 테스트 그룹들...
+});
+```
+
+#### 기본 테스트 패턴
+```typescript
+it('should calculate daily repeating dates correctly', () => {
+  // Given: 기본 반복 설정
+  const repeatInfo = {
+    type: 'daily' as const,
+    interval: 1,
+    endDate: '2024-12-25'
+  };
+  const startDate = '2024-12-20';
+  
+  // When: 일일 반복 날짜 계산
+  const result = calculateRepeatingDates(repeatInfo, startDate);
+  
+  // Then: 예상 결과 검증
+  expect(result).toEqual([
+    '2024-12-20', '2024-12-21', '2024-12-22',
+    '2024-12-23', '2024-12-24', '2024-12-25'
+  ]);
+});
+```
+
+#### 테스트 실행 명령어
+```bash
+# 특정 테스트 파일 실행
+pnpm test src/__tests__/utils/repeatingEventUtils.spec.ts
+
+# 테스트 커버리지 확인
+pnpm run test:coverage
+
+# 테스트 UI 실행
+pnpm run test:ui
+```
+
+### 13.4 아키텍처별 테스트 전략
+
+#### 유틸리티 함수 테스트
+- **단위 테스트**: 각 함수의 독립적인 동작 검증
+- **경계값 테스트**: 날짜 계산의 경계 케이스 검증
+- **에러 케이스 테스트**: 잘못된 입력에 대한 처리 검증
+
+#### 컴포넌트 통합 테스트
+- **훅 통합 테스트**: useEventForm과의 연동 검증
+- **UI 렌더링 테스트**: 반복 일정 표시 기능 검증
+- **사용자 상호작용 테스트**: 폼 입력 및 제출 검증
+
+#### 시스템 통합 테스트
+- **API 연동 테스트**: 기존 엔드포인트와의 호환성 검증
+- **데이터 흐름 테스트**: 반복 일정 생성부터 저장까지의 전체 플로우 검증
+- **성능 테스트**: 기존 기능 성능 유지 검증
+
+---
+
+## 14. 체크리스트 결과 보고서
 
 *이 섹션은 architect-checklist 실행 후 결과로 채워집니다.*
 
 ---
 
-## 14. 다음 단계
+## 15. 다음 단계
 
-### 14.1 스토리 매니저 인계
+### 15.1 스토리 매니저 인계
 
 **Story Manager와의 협업을 위한 프롬프트:**
 
@@ -456,7 +554,7 @@ Assignment-7 프로젝트의 기존 시스템 아키텍처 문서를 참조하�
 **중요:** 구현 과정에서 기존 시스템 무결성을 유지하고, 모든 변경사항이 기존 기능에 영향을 주지 않도록 주의하세요. 백엔드 변경은 절대 금지입니다.
 ```
 
-### 14.2 개발자 인계
+### 15.2 개발자 인계
 
 **개발자 시작을 위한 프롬프트:**
 

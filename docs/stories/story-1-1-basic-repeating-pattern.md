@@ -113,6 +113,205 @@
 **IV3:** 기존 검색 및 필터링 기능이 반복 일정을 포함하여 정상 동작하는지 확인
 **IV4:** **백엔드 시스템이 전혀 변경되지 않았는지 확인**
 
+---
+
+## TDD 개발 가이드
+
+### TDD 개발 원칙
+
+#### Red-Green-Refactor 사이클
+1. **Red**: 실패하는 테스트 작성
+2. **Green**: 테스트를 통과하는 최소한의 코드 작성
+3. **Refactor**: 코드 개선 (기능 변경 없이)
+
+#### 핵심 규칙
+- **테스트 우선**: 구현 코드보다 테스트 코드를 먼저 작성
+- **최소한의 코드**: 테스트를 통과하는 최소한의 코드만 작성
+- **지속적 리팩토링**: 각 단계마다 코드 품질 개선
+
+### 개발 워크플로우
+
+#### 일일 개발 사이클
+1. **아침**: 오늘 구현할 기능의 테스트 작성
+2. **오후**: 테스트를 통과하는 코드 구현
+3. **저녁**: 코드 리팩토링 및 내일 테스트 계획
+
+#### 스토리별 완료 체크리스트
+- [ ] 모든 테스트 케이스 작성 완료
+- [ ] 테스트 통과 확인
+- [ ] 코드 리팩토링 완료
+- [ ] 기존 기능 회귀 테스트 통과
+- [ ] 백엔드 변경 없음 확인
+
+### 테스트 작성 가이드
+
+#### 테스트 파일 구조
+```typescript
+// src/__tests__/utils/repeatingEventUtils.spec.ts
+import { describe, it, expect, beforeEach } from 'vitest';
+import { 
+  calculateRepeatingDates, 
+  validateRepeatSettings, 
+  generateEventInstances 
+} from '../../utils/repeatingEventUtils';
+
+describe('RepeatingEventUtils', () => {
+  // 테스트 그룹들...
+});
+```
+
+#### 기본 테스트 패턴
+```typescript
+it('should calculate daily repeating dates correctly', () => {
+  // Given: 기본 반복 설정
+  const repeatInfo = {
+    type: 'daily' as const,
+    interval: 1,
+    endDate: '2024-12-25'
+  };
+  const startDate = '2024-12-20';
+  
+  // When: 일일 반복 날짜 계산
+  const result = calculateRepeatingDates(repeatInfo, startDate);
+  
+  // Then: 예상 결과 검증
+  expect(result).toEqual([
+    '2024-12-20', '2024-12-21', '2024-12-22',
+    '2024-12-23', '2024-12-24', '2024-12-25'
+  ]);
+});
+```
+
+#### 테스트 실행 명령어
+```bash
+# 특정 테스트 파일 실행
+pnpm test src/__tests__/utils/repeatingEventUtils.spec.ts
+
+# 테스트 커버리지 확인
+pnpm run test:coverage
+
+# 테스트 UI 실행
+pnpm run test:ui
+```
+
+### 스토리별 테스트 전략
+
+#### 반복 패턴 계산 로직 테스트
+- **단위 테스트**: 각 반복 패턴(매일, 매주, 매월, 매년) 계산 함수별 테스트
+- **경계값 테스트**: 윤년, 월말, 연말 등 특수한 날짜 케이스
+- **에러 케이스 테스트**: 잘못된 입력값에 대한 처리 검증
+
+#### 반복 설정 유효성 검사 테스트
+- **유효성 검사 테스트**: 올바른 반복 설정에 대한 검증
+- **에러 검사 테스트**: 잘못된 반복 설정에 대한 에러 처리
+- **경계값 테스트**: 최소/최대 값에 대한 검증
+
+#### 이벤트 인스턴스 생성 테스트
+- **생성 로직 테스트**: 반복 패턴에 따른 이벤트 인스턴스 생성
+- **데이터 변환 테스트**: 기본 이벤트를 반복 이벤트로 변환하는 로직
+- **통합 테스트**: useEventForm 훅과의 연동 검증
+
+### TDD 구현 단계
+
+#### 1단계: 테스트 환경 설정
+```bash
+# 테스트 파일 생성
+mkdir -p src/__tests__/utils
+touch src/__tests__/utils/repeatingEventUtils.spec.ts
+```
+
+#### 2단계: 첫 번째 테스트 작성 (Red 단계)
+```typescript
+// 가장 간단한 일일 반복 테스트부터 시작
+it('should calculate daily repeating dates correctly', () => {
+  // Given: 기본 반복 설정
+  const repeatInfo = { type: 'daily', interval: 1, endDate: '2024-12-25' };
+  const startDate = '2024-12-20';
+  
+  // When: 일일 반복 날짜 계산
+  const result = calculateRepeatingDates(repeatInfo, startDate);
+  
+  // Then: 예상 결과 검증
+  expect(result).toEqual(['2024-12-20', '2024-12-21', '2024-12-22', '2024-12-23', '2024-12-24', '2024-12-25']);
+});
+```
+
+#### 3단계: 최소한의 구현 (Green 단계)
+```typescript
+// 최소한의 구현으로 테스트 통과
+export function calculateRepeatingDates(repeatInfo: RepeatInfo, startDate: string): string[] {
+  if (repeatInfo.type === 'daily') {
+    return ['2024-12-20', '2024-12-21', '2024-12-22', '2024-12-23', '2024-12-24', '2024-12-25'];
+  }
+  return [];
+}
+```
+
+#### 4단계: 추가 테스트 작성 (Red 단계)
+```typescript
+// 주간 반복 테스트 추가
+it('should calculate weekly repeating dates correctly', () => {
+  const repeatInfo = { type: 'weekly', interval: 1, endDate: '2024-12-25' };
+  const startDate = '2024-12-20';
+  
+  const result = calculateRepeatingDates(repeatInfo, startDate);
+  
+  expect(result).toEqual(['2024-12-20', '2024-12-27', '2024-12-25']);
+});
+```
+
+#### 5단계: 실제 로직 구현 (Green 단계)
+```typescript
+// 실제 날짜 계산 로직 구현
+export function calculateRepeatingDates(repeatInfo: RepeatInfo, startDate: string): string[] {
+  const dates: string[] = [];
+  const start = new Date(startDate);
+  const end = repeatInfo.endDate ? new Date(repeatInfo.endDate) : null;
+  
+  let currentDate = new Date(start);
+  let count = 0;
+  const maxCount = repeatInfo.maxOccurrences || 10;
+  
+  while (count < maxCount && (!end || currentDate <= end)) {
+    dates.push(currentDate.toISOString().split('T')[0]);
+    
+    switch (repeatInfo.type) {
+      case 'daily':
+        currentDate.setDate(currentDate.getDate() + repeatInfo.interval);
+        break;
+      case 'weekly':
+        currentDate.setDate(currentDate.getDate() + (7 * repeatInfo.interval));
+        break;
+      // ... 월간, 연간 반복 로직
+    }
+    count++;
+  }
+  
+  return dates;
+}
+```
+
+#### 6단계: 리팩토링 (Refactor 단계)
+```typescript
+// 날짜 계산 로직을 별도 함수로 분리
+function addDays(date: Date, days: number): Date {
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
+}
+
+function addWeeks(date: Date, weeks: number): Date {
+  return addDays(date, weeks * 7);
+}
+
+// 메인 함수에서 분리된 함수 사용
+export function calculateRepeatingDates(repeatInfo: RepeatInfo, startDate: string): string[] {
+  // ... 개선된 구현
+}
+```
+
+---
+
 ## Story Handoff
 
 **Developer Prompt:**

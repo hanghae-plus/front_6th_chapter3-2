@@ -305,6 +305,87 @@ IDE 기반 신규 분석을 통해 현재 프로젝트의 상태를 파악했습
 
 ---
 
+## TDD 개발 가이드
+
+### TDD 개발 원칙
+
+#### Red-Green-Refactor 사이클
+1. **Red**: 실패하는 테스트 작성
+2. **Green**: 테스트를 통과하는 최소한의 코드 작성
+3. **Refactor**: 코드 개선 (기능 변경 없이)
+
+#### 핵심 규칙
+- **테스트 우선**: 구현 코드보다 테스트 코드를 먼저 작성
+- **최소한의 코드**: 테스트를 통과하는 최소한의 코드만 작성
+- **지속적 리팩토링**: 각 단계마다 코드 품질 개선
+
+### 개발 워크플로우
+
+#### 일일 개발 사이클
+1. **아침**: 오늘 구현할 기능의 테스트 작성
+2. **오후**: 테스트를 통과하는 코드 구현
+3. **저녁**: 코드 리팩토링 및 내일 테스트 계획
+
+#### 스토리별 완료 체크리스트
+- [ ] 모든 테스트 케이스 작성 완료
+- [ ] 테스트 통과 확인
+- [ ] 코드 리팩토링 완료
+- [ ] 기존 기능 회귀 테스트 통과
+- [ ] 백엔드 변경 없음 확인
+
+### 테스트 작성 가이드
+
+#### 테스트 파일 구조
+```typescript
+// src/__tests__/utils/repeatingEventUtils.spec.ts
+import { describe, it, expect, beforeEach } from 'vitest';
+import { 
+  calculateRepeatingDates, 
+  validateRepeatSettings, 
+  generateEventInstances 
+} from '../../utils/repeatingEventUtils';
+
+describe('RepeatingEventUtils', () => {
+  // 테스트 그룹들...
+});
+```
+
+#### 기본 테스트 패턴
+```typescript
+it('should calculate daily repeating dates correctly', () => {
+  // Given: 기본 반복 설정
+  const repeatInfo = {
+    type: 'daily' as const,
+    interval: 1,
+    endDate: '2024-12-25'
+  };
+  const startDate = '2024-12-20';
+  
+  // When: 일일 반복 날짜 계산
+  const result = calculateRepeatingDates(repeatInfo, startDate);
+  
+  // Then: 예상 결과 검증
+  expect(result).toEqual([
+    '2024-12-20', '2024-12-21', '2024-12-22',
+    '2024-12-23', '2024-12-24', '2024-12-25'
+  ]);
+});
+```
+
+#### 테스트 실행 명령어
+```bash
+# 특정 테스트 파일 실행
+pnpm test src/__tests__/utils/repeatingEventUtils.spec.ts
+
+# 테스트 커버리지 확인
+pnpm run test:coverage
+
+# 테스트 UI 실행
+pnpm run test:ui
+```
+
+---
+
 ## Checklist Results Report
 
 PRD 작성이 완료되었습니다. 이제 pm-checklist를 실행하여 문서의 품질을 검증하고 결과를 보고하겠습니다.
