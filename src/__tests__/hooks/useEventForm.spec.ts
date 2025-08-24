@@ -14,10 +14,10 @@ afterAll(() => {
 });
 
 describe('useEventForm', () => {
-  it('should create a single event when repeat type is none', () => {
+  it('should create a single event when repeat type is none', async () => {
     const { result } = renderHook(() => useEventForm());
 
-    act(() => {
+    await act(async () => {
       result.current.setTitle('Test Event');
       result.current.setDate('2024-01-01');
       result.current.setStartTime('09:00');
@@ -30,7 +30,7 @@ describe('useEventForm', () => {
       result.current.setNotificationTime(30);
     });
 
-    const events = result.current.createEvents();
+    const events = await result.current.createEvents();
     expect(events).toHaveLength(1);
     expect(events[0]).toMatchObject({
       title: 'Test Event',
@@ -48,10 +48,10 @@ describe('useEventForm', () => {
     });
   });
 
-  it('should create multiple events for daily repeat type', () => {
+  it('should create multiple events for daily repeat type', async () => {
     const { result } = renderHook(() => useEventForm());
 
-    act(() => {
+    await act(async () => {
       result.current.setTitle('Test Event');
       result.current.setDate('2024-01-01');
       result.current.setStartTime('09:00');
@@ -66,7 +66,7 @@ describe('useEventForm', () => {
       result.current.setNotificationTime(30);
     });
 
-    const events = result.current.createEvents();
+    const events = await result.current.createEvents();
     expect(events).toHaveLength(10);
     expect(events[0].date).toBe('2024-01-01');
     expect(events[1].date).toBe('2024-01-02');
@@ -80,10 +80,10 @@ describe('useEventForm', () => {
     expect(events[9].date).toBe('2024-01-10');
   });
 
-  it('should validate repeat settings before creating events', () => {
+  it('should validate repeat settings before creating events', async () => {
     const { result } = renderHook(() => useEventForm());
 
-    act(() => {
+    await act(async () => {
       result.current.setTitle('Test Event');
       result.current.setDate('2024-01-01');
       result.current.setStartTime('09:00');
@@ -94,7 +94,7 @@ describe('useEventForm', () => {
       result.current.setRepeatEndDate('2020-01-01'); // 과거 날짜
     });
 
-    expect(() => result.current.createEvents()).toThrow('Invalid repeat settings');
+    await expect(result.current.createEvents()).rejects.toThrow('Invalid repeat settings');
   });
 
   it('should handle editing an existing event', () => {

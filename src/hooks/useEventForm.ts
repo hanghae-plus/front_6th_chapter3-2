@@ -1,6 +1,7 @@
 import { ChangeEvent, useState } from 'react';
 
 import { Event, RepeatType } from '../types';
+import { saveEvents, showSuccessMessage } from '../utils/eventStorage';
 import { validateRepeatSettings, generateEventInstances } from '../utils/repeatingEventUtils';
 import { getTimeErrorMessage } from '../utils/timeValidation';
 
@@ -70,7 +71,7 @@ export const useEventForm = (initialEvent?: Event) => {
     setNotificationTime(event.notificationTime);
   };
 
-  const createEvents = (): Event[] => {
+  const createEvents = async (): Promise<Event[]> => {
     // 기본 이벤트 객체 생성
     const baseEvent: Event = {
       id: editingEvent?.id || crypto.randomUUID(),
@@ -102,11 +103,27 @@ export const useEventForm = (initialEvent?: Event) => {
       }
 
       // 반복 일정 생성
-      return generateEventInstances(repeatInfo, baseEvent);
+      const events = generateEventInstances(repeatInfo, baseEvent);
+      const success = await saveEvents(events);
+
+      if (success) {
+        showSuccessMessage('반복 일정이 성공적으로 생성되었습니다.');
+        return events;
+      }
+
+      throw new Error('Failed to save repeating events');
     }
 
-    // 반복하지 않는 일정인 경우 단일 이벤트 반환
-    return [baseEvent];
+    // 이벤트 저장
+    const events = [baseEvent];
+    const success = await saveEvents(events);
+
+    if (success) {
+      showSuccessMessage('일정이 성공적으로 생성되었습니다.');
+      return events;
+    }
+
+    throw new Error('Failed to save events');
   };
 
   return {
