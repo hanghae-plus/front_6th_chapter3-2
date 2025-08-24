@@ -15,7 +15,7 @@ export const handlers = [
   }),
 
   http.put('/api/events/:id', async ({ params, request }) => {
-    const { id } = params;
+    const { id } = params; // 수정할 이벤트의 아이디
     const updatedEvent = (await request.json()) as Event;
     const index = events.findIndex((event) => event.id === id);
 
@@ -35,5 +35,46 @@ export const handlers = [
     }
 
     return new HttpResponse(null, { status: 404 });
+  }),
+
+  // ------------------------- 여러 일정 처리 -------------------------
+
+  http.post('/api/events-list', async ({ request }) => {
+    const newEvents = (await request.json()) as Event[];
+    newEvents.forEach((event) => {
+      event.id = String(events.length + 1);
+    });
+    return HttpResponse.json(newEvents, { status: 201 });
+  }),
+
+  http.put('/api/events-list', async ({ request }) => {
+    const updatedEvents = (await request.json()) as Event[];
+    let isUpdated = false;
+
+    const newEvents = [...events];
+
+    updatedEvents.forEach((event) => {
+      const index = events.findIndex((target) => target.id === event.id);
+      if (index > -1) isUpdated = true;
+      newEvents[index] = { ...events[index], ...event };
+    });
+
+    if (isUpdated) {
+      events.splice(0, events.length, ...newEvents);
+      return HttpResponse.json(newEvents);
+    } else {
+      return new HttpResponse(null, { status: 404 });
+    }
+  }),
+
+  http.delete('/api/events-list', async ({ request }) => {
+    const { eventIds } = (await request.json()) as { eventIds: string[] };
+    const exists = events.some((event) => eventIds.find((id) => event.id === id));
+
+    if (!exists) {
+      return new HttpResponse(null, { status: 404 });
+    }
+
+    return new HttpResponse(null, { status: 204 });
   }),
 ];
