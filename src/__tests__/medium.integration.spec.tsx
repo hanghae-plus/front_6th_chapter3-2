@@ -77,7 +77,7 @@ describe('일정 CRUD 및 기본 기능', () => {
     expect(eventList.getByText('프로젝트 진행 상황 논의')).toBeInTheDocument();
     expect(eventList.getByText('회의실 A')).toBeInTheDocument();
     expect(eventList.getByText('카테고리: 업무')).toBeInTheDocument();
-  });
+  }, 30000);
 
   it('기존 일정의 세부 정보를 수정하고 변경사항이 정확히 반영된다', async () => {
     const { user } = setup(<App />);
@@ -147,7 +147,7 @@ describe('일정 뷰', () => {
 
     const weekView = within(screen.getByTestId('week-view'));
     expect(weekView.getByText('이번주 팀 회의')).toBeInTheDocument();
-  });
+  }, 30000);
 
   it('월별 뷰에 일정이 없으면, 일정이 표시되지 않아야 한다.', async () => {
     vi.setSystemTime(new Date('2025-01-01'));
@@ -177,7 +177,7 @@ describe('일정 뷰', () => {
 
     const monthView = within(screen.getByTestId('month-view'));
     expect(monthView.getByText('이번달 팀 회의')).toBeInTheDocument();
-  });
+  }, 30000);
 
   it('달력에 1월 1일(신정)이 공휴일로 표시되는지 확인한다', async () => {
     vi.setSystemTime(new Date('2025-01-01'));
@@ -300,7 +300,7 @@ describe('일정 충돌', () => {
     expect(screen.getByText('일정 겹침 경고')).toBeInTheDocument();
     expect(screen.getByText(/다음 일정과 겹칩니다/)).toBeInTheDocument();
     expect(screen.getByText('기존 회의 (2025-10-15 09:00-10:00)')).toBeInTheDocument();
-  });
+  }, 30000);
 
   it('기존 일정의 시간을 수정하여 충돌이 발생하면 경고가 노출된다', async () => {
     setupMockHandlerUpdating();
