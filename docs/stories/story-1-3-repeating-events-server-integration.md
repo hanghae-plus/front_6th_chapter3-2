@@ -526,6 +526,40 @@ export function useEventOperations() {
 
 ---
 
+## Dev Agent Record
+
+### Tasks / Subtasks Checkboxes
+- [ ] 반복 일정을 단일 일정으로 변환하는 로직 구현
+- [ ] 기존 수정 API와의 연동 로직 구현  
+- [ ] 기존 삭제 API와의 연동 로직 구현
+- [ ] 단위 테스트 작성 및 실행
+- [ ] 기존 기능과의 호환성 검증
+
+### Agent Model Used
+- TDD (Test-Driven Development) 방식
+
+### Debug Log References
+- [ ] 테스트 실패 확인 (Red 단계)
+- [ ] 테스트 통과 확인 (Green 단계)
+- [ ] 리팩토링 후 테스트 통과 확인
+
+### Completion Notes List
+- [ ] TDD 준수 강제 지시사항 확인
+- [ ] Red-Green-Refactor 전략 적용
+
+### File List
+- [ ] src/__tests__/hooks/useEventOperations.spec.ts (생성 예정)
+- [ ] src/hooks/useEventOperations.ts (수정 예정)
+
+### Change Log
+- [ ] TDD 준수 강제 지시사항 추가
+- [ ] Red-Green-Refactor 전략 상세 가이드 추가
+
+### Status
+- Draft
+
+---
+
 ## Story Handoff
 
 **Developer Prompt:**

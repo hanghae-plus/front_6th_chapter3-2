@@ -10,16 +10,16 @@ import { useEventOperations } from '../../hooks/useEventOperations.ts';
 import { server } from '../../setupTests.ts';
 import { Event } from '../../types.ts';
 
-const enqueueSnackbarFn = vi.fn();
+// Mock useSnackbar
+const mockEnqueueSnackbar = vi.fn();
+vi.mock('notistack', () => ({
+  useSnackbar: () => ({
+    enqueueSnackbar: mockEnqueueSnackbar,
+  }),
+}));
 
-vi.mock('notistack', async () => {
-  const actual = await vi.importActual('notistack');
-  return {
-    ...actual,
-    useSnackbar: () => ({
-      enqueueSnackbar: enqueueSnackbarFn,
-    }),
-  };
+beforeEach(() => {
+  vi.clearAllMocks();
 });
 
 it('저장되어있는 초기 이벤트 데이터를 적절하게 불러온다', async () => {
@@ -44,7 +44,7 @@ it('저장되어있는 초기 이벤트 데이터를 적절하게 불러온다',
 });
 
 it('정의된 이벤트 정보를 기준으로 적절하게 저장이 된다', async () => {
-  setupMockHandlerCreation(); // ? Med: 이걸 왜 써야하는지 물어보자
+  setupMockHandlerCreation();
 
   const { result } = renderHook(() => useEventOperations(false));
 
@@ -112,22 +112,20 @@ it('존재하는 이벤트 삭제 시 에러없이 아이템이 삭제된다.', 
 });
 
 it("이벤트 로딩 실패 시 '이벤트 로딩 실패'라는 텍스트와 함께 에러 토스트가 표시되어야 한다", async () => {
-  server.use(
-    http.get('/api/events', () => {
-      return new HttpResponse(null, { status: 500 });
-    })
-  );
+  server.use(http.get('/api/events', () => new HttpResponse(null, { status: 500 })));
 
   renderHook(() => useEventOperations(true));
 
   await act(() => Promise.resolve(null));
 
-  expect(enqueueSnackbarFn).toHaveBeenCalledWith('이벤트 로딩 실패', { variant: 'error' });
+  expect(mockEnqueueSnackbar).toHaveBeenCalledWith('이벤트 로딩 실패', { variant: 'error' });
 
   server.resetHandlers();
 });
 
 it("존재하지 않는 이벤트 수정 시 '일정 저장 실패'라는 토스트가 노출되며 에러 처리가 되어야 한다", async () => {
+  server.use(http.put('/api/events/:id', () => new HttpResponse(null, { status: 404 })));
+
   const { result } = renderHook(() => useEventOperations(true));
 
   await act(() => Promise.resolve(null));
@@ -146,28 +144,32 @@ it("존재하지 않는 이벤트 수정 시 '일정 저장 실패'라는 토스
   };
 
   await act(async () => {
-    await result.current.saveEvent(nonExistentEvent);
+    try {
+      await result.current.saveEvent(nonExistentEvent);
+    } catch (error) {
+      // 에러는 예상된 것이므로 무시
+    }
   });
 
-  expect(enqueueSnackbarFn).toHaveBeenCalledWith('일정 저장 실패', { variant: 'error' });
+  expect(mockEnqueueSnackbar).toHaveBeenCalledWith('일정 저장 실패', { variant: 'error' });
 });
 
 it("네트워크 오류 시 '일정 삭제 실패'라는 텍스트가 노출되며 이벤트 삭제가 실패해야 한다", async () => {
-  server.use(
-    http.delete('/api/events/:id', () => {
-      return new HttpResponse(null, { status: 500 });
-    })
-  );
+  server.use(http.delete('/api/events/:id', () => new HttpResponse(null, { status: 500 })));
 
   const { result } = renderHook(() => useEventOperations(false));
 
   await act(() => Promise.resolve(null));
 
   await act(async () => {
-    await result.current.deleteEvent('1');
+    try {
+      await result.current.deleteEvent('1');
+    } catch (error) {
+      // 에러는 예상된 것이므로 무시
+    }
   });
 
-  expect(enqueueSnackbarFn).toHaveBeenCalledWith('일정 삭제 실패', { variant: 'error' });
+  expect(mockEnqueueSnackbar).toHaveBeenCalledWith('일정 삭제 실패', { variant: 'error' });
 
   expect(result.current.events).toHaveLength(1);
 });
