@@ -1,6 +1,7 @@
 import { ChangeEvent, useState } from 'react';
 
 import { Event, RepeatType } from '../types';
+import { validateRepeatSettings, generateEventInstances } from '../utils/repeatingEventUtils';
 import { getTimeErrorMessage } from '../utils/timeValidation';
 
 type TimeErrorRecord = Record<'startTimeError' | 'endTimeError', string | null>;
@@ -69,6 +70,45 @@ export const useEventForm = (initialEvent?: Event) => {
     setNotificationTime(event.notificationTime);
   };
 
+  const createEvents = (): Event[] => {
+    // 기본 이벤트 객체 생성
+    const baseEvent: Event = {
+      id: editingEvent?.id || crypto.randomUUID(),
+      title,
+      date,
+      startTime,
+      endTime,
+      description,
+      location,
+      category,
+      repeat: {
+        type: repeatType,
+        interval: repeatInterval,
+        endDate: repeatEndDate || undefined,
+      },
+      notificationTime,
+    };
+
+    // 반복 설정이 있는 경우 유효성 검사
+    if (isRepeating) {
+      const repeatInfo = {
+        type: repeatType,
+        interval: repeatInterval,
+        endDate: repeatEndDate,
+      };
+
+      if (!validateRepeatSettings(repeatInfo)) {
+        throw new Error('Invalid repeat settings');
+      }
+
+      // 반복 일정 생성
+      return generateEventInstances(repeatInfo, baseEvent);
+    }
+
+    // 반복하지 않는 일정인 경우 단일 이벤트 반환
+    return [baseEvent];
+  };
+
   return {
     title,
     setTitle,
@@ -102,5 +142,6 @@ export const useEventForm = (initialEvent?: Event) => {
     handleEndTimeChange,
     resetForm,
     editEvent,
+    createEvents,
   };
 };
