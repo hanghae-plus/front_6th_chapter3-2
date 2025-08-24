@@ -56,7 +56,10 @@ List 1-3 focused stories that complete the epic:
 - 사용자 경험을 고려한 직관적인 일괄 선택 인터페이스 설계
 
 **Backend Integration:**
-- 기존 반복 일정 수정/삭제 로직에 일괄 작업 처리 로직 확장
+- 새로운 `/api/events-list` 엔드포인트를 통한 일괄 작업 처리:
+  - POST: 여러 반복 일정 한 번에 생성
+  - PUT: 여러 반복 일정 한 번에 수정
+  - DELETE: 여러 반복 일정 한 번에 삭제
 - 일괄 작업 정보를 포함한 데이터 저장 구조 확장
 - JSON 파일 기반 데이터 저장 구조 유지
 - 데이터 무결성을 보장하는 검증 로직 추가
