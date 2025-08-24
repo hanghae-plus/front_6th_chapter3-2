@@ -144,11 +144,7 @@ it("존재하지 않는 이벤트 수정 시 '일정 저장 실패'라는 토스
   };
 
   await act(async () => {
-    try {
-      await result.current.saveEvent(nonExistentEvent);
-    } catch (error) {
-      // 에러는 예상된 것이므로 무시
-    }
+    await result.current.saveEvent(nonExistentEvent);
   });
 
   expect(mockEnqueueSnackbar).toHaveBeenCalledWith('일정 저장 실패', { variant: 'error' });
@@ -162,11 +158,7 @@ it("네트워크 오류 시 '일정 삭제 실패'라는 텍스트가 노출되�
   await act(() => Promise.resolve(null));
 
   await act(async () => {
-    try {
-      await result.current.deleteEvent('1');
-    } catch (error) {
-      // 에러는 예상된 것이므로 무시
-    }
+    await result.current.deleteEvent('1');
   });
 
   expect(mockEnqueueSnackbar).toHaveBeenCalledWith('일정 삭제 실패', { variant: 'error' });

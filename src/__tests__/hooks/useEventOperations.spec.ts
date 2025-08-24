@@ -94,11 +94,7 @@ describe('useEventOperations - 반복 일정 저장', () => {
     const { result } = renderHook(() => useEventOperations(false));
 
     await act(async () => {
-      try {
-        await result.current.saveEvent(mockEvent);
-      } catch (error) {
-        // 에러는 예상된 것이므로 무시
-      }
+      await result.current.saveEvent(mockEvent);
     });
 
     // 에러 메시지가 표시되었는지 확인
