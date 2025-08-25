@@ -120,6 +120,9 @@ function App() {
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [bulkEditTitle, setBulkEditTitle] = useState('');
   const [updateScope, setUpdateScope] = useState<'single' | 'all'>('single');
+  const [deleteScope, setDeleteScope] = useState<'single' | 'all'>('single');
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingDeleteIds, setPendingDeleteIds] = useState<string[]>([]);
 
   const { enqueueSnackbar } = useSnackbar();
 
@@ -601,6 +604,27 @@ function App() {
               </RadioGroup>
             </FormControl>
           )}
+          {editingEvent && editingEvent.repeat.type !== 'none' && (
+            <FormControl sx={{ mt: 1 }}>
+              <FormLabel>삭제 범위</FormLabel>
+              <RadioGroup
+                row
+                value={deleteScope}
+                onChange={(e) => setDeleteScope(e.target.value as 'single' | 'all')}
+              >
+                <FormControlLabel
+                  value="single"
+                  control={<Radio size="small" />}
+                  label="이 일정만 삭제"
+                />
+                <FormControlLabel
+                  value="all"
+                  control={<Radio size="small" />}
+                  label="모든 반복 일정 삭제"
+                />
+              </RadioGroup>
+            </FormControl>
+          )}
         </Stack>
 
         <Stack flex={1} spacing={5}>
@@ -769,7 +793,22 @@ function App() {
                       <IconButton aria-label="Edit event" onClick={() => editEvent(event)}>
                         <Edit />
                       </IconButton>
-                      <IconButton aria-label="Delete event" onClick={() => deleteEvent(event.id)}>
+                      <IconButton
+                        aria-label="Delete event"
+                        onClick={() => {
+                          if (event.repeat.type !== 'none' && event.repeat.id) {
+                            // 반복 이벤트: 삭제 범위 선택 후 확인
+                            const groupIds = events
+                              .filter((e) => e.repeat.id === event.repeat.id)
+                              .map((e) => e.id);
+                            setPendingDeleteIds(deleteScope === 'all' ? groupIds : [event.id]);
+                            setConfirmOpen(true);
+                          } else {
+                            // 단일 일정은 즉시 삭제
+                            void deleteEvent(event.id);
+                          }
+                        }}
+                      >
                         <Delete />
                       </IconButton>
                     </Stack>
@@ -855,6 +894,30 @@ function App() {
             disabled={!bulkEditTitle}
           >
             저장
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
+        <DialogTitle>삭제 확인</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {deleteScope === 'all'
+              ? '정말 모든 반복 일정을 삭제하시겠습니까?'
+              : '정말 이 일정을 삭제하시겠습니까?'}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmOpen(false)}>취소</Button>
+          <Button
+            color="error"
+            onClick={async () => {
+              await deleteBulkEvents(pendingDeleteIds);
+              setConfirmOpen(false);
+              setPendingDeleteIds([]);
+            }}
+          >
+            삭제
           </Button>
         </DialogActions>
       </Dialog>

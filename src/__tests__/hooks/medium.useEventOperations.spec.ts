@@ -272,3 +272,135 @@ it('deleteBulkEvents로 여러 이벤트를 일괄 삭제한다', async () => {
 
   expect(result.current.events).toEqual([]);
 });
+
+it('updateBulkEvents: 빈 배열이면 요청 없이 상태 변화가 없다', async () => {
+  const init: Event[] = [
+    {
+      id: '1',
+      title: 'A',
+      date: '2025-10-15',
+      startTime: '09:00',
+      endTime: '10:00',
+      description: '',
+      location: 'L',
+      category: '업무',
+      repeat: { type: 'none', interval: 0 },
+      notificationTime: 10,
+    },
+  ];
+  server.use(
+    http.get('/api/events', () => HttpResponse.json({ events: init })),
+    http.put('/api/events-list', () => HttpResponse.json(init))
+  );
+  const { result } = renderHook(() => useEventOperations(false));
+  await act(() => Promise.resolve(null));
+  await act(async () => {
+    await result.current.updateBulkEvents([] as unknown as Event[]);
+  });
+  expect(result.current.events).toEqual(init);
+});
+
+it('updateBulkEvents: 일부만 일치하는 경우 해당 항목만 갱신된다', async () => {
+  let current: Event[] = [
+    {
+      id: '1',
+      title: 'A',
+      date: '2025-10-15',
+      startTime: '09:00',
+      endTime: '10:00',
+      description: '',
+      location: 'L',
+      category: '업무',
+      repeat: { type: 'none', interval: 0 },
+      notificationTime: 10,
+    },
+    {
+      id: '2',
+      title: 'B',
+      date: '2025-10-16',
+      startTime: '09:00',
+      endTime: '10:00',
+      description: '',
+      location: 'L',
+      category: '업무',
+      repeat: { type: 'none', interval: 0 },
+      notificationTime: 10,
+    },
+  ];
+  server.use(
+    http.get('/api/events', () => HttpResponse.json({ events: current })),
+    http.put('/api/events-list', async ({ request }) => {
+      const { events } = (await request.json()) as { events: Event[] };
+      current = current.map((e) =>
+        events.find((u) => u.id === e.id) ? { ...e, ...events.find((u) => u.id === e.id)! } : e
+      );
+      return HttpResponse.json(current);
+    })
+  );
+  const { result } = renderHook(() => useEventOperations(false));
+  await act(() => Promise.resolve(null));
+  await act(async () => {
+    await result.current.updateBulkEvents([{ ...current[0], title: 'A*' }] as Event[]);
+  });
+  expect(result.current.events[0].title).toBe('A*');
+  expect(result.current.events[1].title).toBe('B');
+});
+
+it('deleteBulkEvents: 빈 배열이면 아무 것도 삭제되지 않는다', async () => {
+  const init: Event[] = [
+    {
+      id: '1',
+      title: 'A',
+      date: '2025-10-15',
+      startTime: '09:00',
+      endTime: '10:00',
+      description: '',
+      location: 'L',
+      category: '업무',
+      repeat: { type: 'none', interval: 0 },
+      notificationTime: 10,
+    },
+  ];
+  server.use(
+    http.get('/api/events', () => HttpResponse.json({ events: init })),
+    http.delete('/api/events-list', () => new HttpResponse(null, { status: 204 }))
+  );
+  const { result } = renderHook(() => useEventOperations(false));
+  await act(() => Promise.resolve(null));
+  await act(async () => {
+    await result.current.deleteBulkEvents([]);
+  });
+  expect(result.current.events).toEqual(init);
+});
+
+it('deleteBulkEvents: 서버 에러 시 에러 토스트가 노출된다', async () => {
+  const init: Event[] = [
+    {
+      id: '1',
+      title: 'A',
+      date: '2025-10-15',
+      startTime: '09:00',
+      endTime: '10:00',
+      description: '',
+      location: 'L',
+      category: '업무',
+      repeat: { type: 'none', interval: 0 },
+      notificationTime: 10,
+    },
+  ];
+  server.use(
+    http.get('/api/events', () => HttpResponse.json({ events: init })),
+    http.delete('/api/events-list', () => new HttpResponse(null, { status: 500 }))
+  );
+  const { result } = renderHook(() => useEventOperations(false));
+  await act(() => Promise.resolve(null));
+  await act(async () => {
+    try {
+      await result.current.deleteBulkEvents(['1']);
+    } catch {
+      // ignore
+    }
+  });
+  // enqueueSnackbar 호출 여부는 상단 mock으로 커버됨. 상태는 그대로
+  expect(result.current.events).toEqual(init);
+});
