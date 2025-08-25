@@ -171,3 +171,104 @@ it("네트워크 오류 시 '일정 삭제 실패'라는 텍스트가 노출되�
 
   expect(result.current.events).toHaveLength(1);
 });
+
+it('updateBulkEvents로 동일 그룹의 제목을 일괄 수정한다', async () => {
+  const init: Event[] = [
+    {
+      id: '1',
+      title: '반복 회의 1',
+      date: '2025-10-15',
+      startTime: '09:00',
+      endTime: '10:00',
+      description: '',
+      location: 'A',
+      category: '업무',
+      repeat: { type: 'daily', interval: 1, id: 'repeat-123' },
+      notificationTime: 10,
+    },
+    {
+      id: '2',
+      title: '반복 회의 2',
+      date: '2025-10-16',
+      startTime: '09:00',
+      endTime: '10:00',
+      description: '',
+      location: 'A',
+      category: '업무',
+      repeat: { type: 'daily', interval: 1, id: 'repeat-123' },
+      notificationTime: 10,
+    },
+  ];
+
+  let current = [...init];
+  server.use(
+    http.get('/api/events', () => {
+      return HttpResponse.json({ events: current });
+    }),
+    http.put('/api/events-list', async ({ request }) => {
+      const { events } = (await request.json()) as { events: Event[] };
+      current = current.map((e) => {
+        const found = events.find((u) => u.id === e.id);
+        return found ? { ...e, ...found } : e;
+      });
+      return HttpResponse.json(current);
+    })
+  );
+
+  const { result } = renderHook(() => useEventOperations(false));
+  await act(() => Promise.resolve(null));
+
+  await act(async () => {
+    await result.current.updateBulkEvents(init.map((e) => ({ ...e, title: '그룹 변경' })));
+  });
+
+  expect(result.current.events.every((e) => e.title === '그룹 변경')).toBe(true);
+});
+
+it('deleteBulkEvents로 여러 이벤트를 일괄 삭제한다', async () => {
+  const init: Event[] = [
+    {
+      id: '1',
+      title: '반복 회의 1',
+      date: '2025-10-15',
+      startTime: '09:00',
+      endTime: '10:00',
+      description: '',
+      location: 'A',
+      category: '업무',
+      repeat: { type: 'daily', interval: 1, id: 'repeat-123' },
+      notificationTime: 10,
+    },
+    {
+      id: '2',
+      title: '반복 회의 2',
+      date: '2025-10-16',
+      startTime: '09:00',
+      endTime: '10:00',
+      description: '',
+      location: 'A',
+      category: '업무',
+      repeat: { type: 'daily', interval: 1, id: 'repeat-123' },
+      notificationTime: 10,
+    },
+  ];
+
+  let current = [...init];
+  server.use(
+    http.get('/api/events', () => HttpResponse.json({ events: current })),
+    http.delete('/api/events-list', async ({ request }) => {
+      const { eventIds } = (await request.json()) as { eventIds: string[] };
+      current = current.filter((e) => !eventIds.includes(e.id));
+      return new HttpResponse(null, { status: 204 });
+    })
+  );
+
+  const { result } = renderHook(() => useEventOperations(false));
+  await act(() => Promise.resolve(null));
+
+  await act(async () => {
+    await result.current.deleteBulkEvents(['1', '2']);
+  });
+
+  expect(result.current.events).toEqual([]);
+});

@@ -13,6 +13,8 @@ import {
   FormControl,
   FormControlLabel,
   FormLabel,
+  Radio,
+  RadioGroup,
   IconButton,
   MenuItem,
   Select,
@@ -117,6 +119,7 @@ function App() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [bulkEditTitle, setBulkEditTitle] = useState('');
+  const [updateScope, setUpdateScope] = useState<'single' | 'all'>('single');
 
   const { enqueueSnackbar } = useSnackbar();
 
@@ -155,8 +158,34 @@ function App() {
       setOverlappingEvents(overlapping);
       setIsOverlapDialogOpen(true);
     } else {
-      await saveEvent(eventData);
-      resetForm();
+      // 편집 + 모든 반복 일정 수정 선택 시: 동일 repeat.id 전체 일괄 수정
+      if (
+        editingEvent &&
+        updateScope === 'all' &&
+        editingEvent.repeat.type !== 'none' &&
+        editingEvent.repeat.id
+      ) {
+        const groupId = editingEvent.repeat.id;
+        const updatedGroup = events
+          .filter((e) => e.repeat.id === groupId)
+          .map((e) => ({
+            ...e,
+            title,
+            date,
+            startTime,
+            endTime,
+            description,
+            location,
+            category,
+            notificationTime,
+          }));
+        await updateBulkEvents(updatedGroup);
+        setEditingEvent(null);
+        resetForm();
+      } else {
+        await saveEvent(eventData);
+        resetForm();
+      }
     }
   };
 
@@ -550,6 +579,28 @@ function App() {
           >
             {editingEvent ? '일정 수정' : '일정 추가'}
           </Button>
+
+          {editingEvent && editingEvent.repeat.type !== 'none' && (
+            <FormControl sx={{ mt: 1 }}>
+              <FormLabel>수정 범위</FormLabel>
+              <RadioGroup
+                row
+                value={updateScope}
+                onChange={(e) => setUpdateScope(e.target.value as 'single' | 'all')}
+              >
+                <FormControlLabel
+                  value="single"
+                  control={<Radio size="small" />}
+                  label="이 일정만 수정"
+                />
+                <FormControlLabel
+                  value="all"
+                  control={<Radio size="small" />}
+                  label="모든 반복 일정 수정"
+                />
+              </RadioGroup>
+            </FormControl>
+          )}
         </Stack>
 
         <Stack flex={1} spacing={5}>

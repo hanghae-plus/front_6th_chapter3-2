@@ -131,4 +131,61 @@ describe('Integration - Bulk Events API', () => {
     });
     expect(res.status).toBe(204);
   });
+
+  it('수정 폼에서 모든 반복 일정 수정을 선택하면 동일 그룹 제목이 일괄 변경된다', async () => {
+    // 초기 생성
+    await fetch('/api/events-list', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        events: [
+          {
+            id: 'x1',
+            title: '반복 회의',
+            date: '2025-10-15',
+            startTime: '09:00',
+            endTime: '10:00',
+            description: '',
+            location: 'A',
+            category: '업무',
+            repeat: { type: 'daily', interval: 1 },
+            notificationTime: 10,
+          },
+          {
+            id: 'x2',
+            title: '반복 회의',
+            date: '2025-10-16',
+            startTime: '09:00',
+            endTime: '10:00',
+            description: '',
+            location: 'A',
+            category: '업무',
+            repeat: { type: 'daily', interval: 1 },
+            notificationTime: 10,
+          },
+        ],
+      }),
+    });
+
+    // 목록 조회
+    const listRes = await fetch('/api/events');
+    const { events } = (await listRes.json()) as { events: Event[] };
+    const groupId = events.find((e) => e.repeat.type !== 'none')?.repeat.id;
+    expect(groupId).toBeTruthy();
+
+    // 동일 그룹 두 건을 title 변경 요청
+    const updated = events
+      .filter((e) => e.repeat.id === groupId)
+      .map((e) => ({ ...e, title: '일괄 변경' }));
+
+    const res = await fetch('/api/events-list', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ events: updated }),
+    });
+    expect(res.status === 200 || res.status === 201).toBeTruthy();
+    const after: Event[] = await res.json();
+    const affected = after.filter((e) => e.repeat.id === groupId);
+    expect(affected.every((e) => e.title === '일괄 변경')).toBe(true);
+  });
 });
