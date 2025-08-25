@@ -2,7 +2,7 @@ import { useSnackbar } from 'notistack';
 import { useEffect, useState } from 'react';
 
 import { Event, EventForm } from '../types';
-import { getRepeatEventList } from '../utils/repeatUtils';
+import { getRepeatEventList, toSingleEvent } from '../utils/repeatUtils';
 
 export const useEventOperations = (editing: boolean, onSave?: () => void) => {
   const [events, setEvents] = useState<Event[]>([]);
@@ -23,6 +23,10 @@ export const useEventOperations = (editing: boolean, onSave?: () => void) => {
   };
 
   const saveEvent = async (eventData: Event | EventForm) => {
+    if (eventData.repeat.type !== 'none') {
+      eventData = toSingleEvent(eventData);
+    }
+
     try {
       let response;
       if (editing) {

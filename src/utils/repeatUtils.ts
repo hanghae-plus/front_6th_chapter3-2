@@ -1,4 +1,10 @@
-import { EventForm } from '../types';
+import { Event, EventForm } from '../types';
+
+// 반복 일정을 단일 일정으로 변환
+export const toSingleEvent = (event: Event | EventForm): Event | EventForm => ({
+  ...event,
+  repeat: { type: 'none', interval: 0 },
+});
 
 // 매일 반복 일정 배열
 export const getDailyRepeatEvents = (event: EventForm): EventForm[] => {
@@ -47,7 +53,6 @@ export const getMonthlyRepeatEvents = (event: EventForm): EventForm[] => {
     let nextYear = current.getFullYear();
     let nextMonth = current.getMonth() + interval;
 
-    // 년/월 보정
     if (nextMonth > 11) {
       nextYear += Math.floor(nextMonth / 12);
       nextMonth = nextMonth % 12;

@@ -364,7 +364,7 @@ it('반복 일정을 수정하면 해당 일정은 단일 일정으로 변경된
     await result.current.saveEvent(updatedEvent);
   });
 
-  // 훅 내에서 repeat type 수정
+  // 훅 내에서 repeat 값 초기화
   expect(result.current.events[1]).toEqual({
     id: '2',
     title: '정기 회의',
