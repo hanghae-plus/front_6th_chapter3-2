@@ -2,6 +2,7 @@ import { useSnackbar } from 'notistack';
 import { useEffect, useState } from 'react';
 
 import { Event, EventForm } from '../types';
+import { getRepeatEventList } from '../utils/repeatUtils';
 
 export const useEventOperations = (editing: boolean, onSave?: () => void) => {
   const [events, setEvents] = useState<Event[]>([]);
@@ -71,7 +72,32 @@ export const useEventOperations = (editing: boolean, onSave?: () => void) => {
 
   // ------------------------- 여러 일정 처리 -------------------------
 
-  const saveEventList = async (_eventData: Event | EventForm) => {};
+  const saveEventList = async (eventData: Event | EventForm) => {
+    try {
+      const eventListData = getRepeatEventList(eventData);
+      let response;
+
+      // editing에 따라 수정 로직 추가 필요
+      response = await fetch('/api/events-list', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(eventListData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save event');
+      }
+
+      await fetchEvents();
+      onSave?.();
+      enqueueSnackbar(editing ? '일정이 수정되었습니다.' : '일정이 추가되었습니다.', {
+        variant: 'success',
+      });
+    } catch (error) {
+      console.error('Error saving event:', error);
+      enqueueSnackbar('일정 저장 실패', { variant: 'error' });
+    }
+  };
 
   const deleteEventList = async (_ids: string[]) => {};
 
