@@ -507,3 +507,5 @@ interface Event {
 - Risks/Notes:
   - 그룹 편집 항목은 현재 제목만 예시로 일괄 수정(추가 필드 확장 여지)
   - 선택 모드 접근성(a11y) 향상 여지(포커스 이동/역할/레이블 강화)
+  - Reviewed: 최신 빌드 기준 전체 테스트(단위/통합/회귀) 그린
+  - Reviewer: QA(Quinn)
