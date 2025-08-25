@@ -297,6 +297,12 @@ src/
   - 다량 삭제 시 성능 및 취소 흐름(undo) 추가 고려 필요
   - Reviewed: 최신 빌드 기준 전체 테스트(단위/통합/회귀) 그린
   - Reviewer: QA(Quinn)
+  - Review Date: 2025-08-25
+  - Evidence:
+    - 서버 구현: `server.js`의 `DELETE /api/events-list`(배열 삭제) 및 단일 삭제 경로(`/api/events/:id`) 확인
+    - 목 핸들러: `src/__mocks__/handlersUtils.ts`의 `deleteBulkEventsHandler` 및 `setupMockHandlerBulkOperations`
+    - 통합 테스트: `src/__tests__/integration/bulk-events.integration.spec.ts`의 일괄 삭제 케이스 통과 확인
+    - 회귀 UI 테스트: `src/__tests__/regression/story-3-3-ui.regression.spec.tsx`에서 확인 다이얼로그/취소/단일 삭제 흐름 검증
 1. **모니터링**
    - 테스트 실행 시간 모니터링
    - 성능 메트릭 모니터링

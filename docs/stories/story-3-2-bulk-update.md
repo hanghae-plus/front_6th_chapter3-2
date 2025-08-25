@@ -287,6 +287,12 @@ src/
   - 대량 항목 편집 시 성능 모니터링 필요(향후 가상화/배치 UI 고려)
   - Reviewed: 최신 빌드 기준 전체 테스트(단위/통합/회귀) 그린
   - Reviewer: QA(Quinn)
+  - Review Date: 2025-08-25
+  - Evidence:
+    - 서버 구현: `server.js`의 `PUT /api/events-list` 동작(부분 업데이트, 전체 목록 반환) 확인
+    - 목 핸들러: `src/__mocks__/handlersUtils.ts`의 `updateBulkEventsHandler` 및 `setupMockHandlerBulkOperations`
+    - 통합 테스트: `src/__tests__/integration/bulk-events.integration.spec.ts`의 일괄 수정 케이스 통과 확인
+    - 훅 단위 테스트: `src/__tests__/hooks/medium.useEventOperations.spec.ts`의 `updateBulkEvents` 정상/부분 일치/빈 배열 케이스 검증
 1. **모니터링**
    - 테스트 실행 시간 모니터링
    - 성능 메트릭 모니터링

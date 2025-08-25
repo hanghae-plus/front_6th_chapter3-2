@@ -509,3 +509,9 @@ interface Event {
   - 선택 모드 접근성(a11y) 향상 여지(포커스 이동/역할/레이블 강화)
   - Reviewed: 최신 빌드 기준 전체 테스트(단위/통합/회귀) 그린
   - Reviewer: QA(Quinn)
+  - Review Date: 2025-08-25
+  - Evidence:
+    - 서버 구현: `server.js`의 `POST/PUT/DELETE /api/events-list` 엔드포인트 동작 확인(반복 이벤트 생성 시 동일 `repeat.id` 부여, 부분 업데이트, 다중 삭제)
+    - 목 핸들러: `src/__mocks__/handlersUtils.ts`의 `setupMockHandlerBulkOperations`를 통한 일괄 생성/수정/삭제 흐름 검증
+    - 통합 테스트: `src/__tests__/integration/bulk-events.integration.spec.ts`에서 동일 `repeat.id` 부여, 일괄 수정/삭제 시나리오 통과
+    - 훅 단위 테스트: `src/__tests__/hooks/medium.useEventOperations.spec.ts`에서 `updateBulkEvents`/`deleteBulkEvents` 동작 및 에러 처리 확인

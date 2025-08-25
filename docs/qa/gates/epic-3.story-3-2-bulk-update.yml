@@ -1,0 +1,14 @@
+story: "Story 3.2: 반복 일정 일괄 수정 기능 구현"
+id: story-3-2-bulk-update
+decision: PASS
+date: "2025-08-25"
+rationale:
+  - 수정 범위 선택 UI와 PUT /api/events-list 일괄 수정이 통합/단위 테스트로 확인됨
+  - 서버 구현의 부분 업데이트 및 전체 목록 반환 동작 일치 확인
+risks:
+  - 대량 항목 편집 시 성능 모니터링 필요
+references:
+  - src/__tests__/integration/bulk-events.integration.spec.ts
+  - src/__tests__/hooks/medium.useEventOperations.spec.ts
+  - src/__mocks__/handlersUtils.ts
+  - server.js
