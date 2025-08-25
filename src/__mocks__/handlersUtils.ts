@@ -113,6 +113,93 @@ export const setupMockHandlerListCreation = (initEvents = [] as Event[]) => {
   );
 };
 
+// 반복 일정을 단일 일정으로 변경 - 함수명 수정 필요
+export const setupMockHandlerUpdateRepeat = () => {
+  const mockEvents: Event[] = [
+    {
+      id: '1',
+      title: '정기 회의',
+      date: '2025-10-15',
+      startTime: '11:00',
+      endTime: '12:00',
+      description: '정기 팀 미팅',
+      location: '회의실 A',
+      category: '업무',
+      repeat: { type: 'daily', interval: 1, endDate: '2025-10-16' },
+      notificationTime: 10,
+    },
+    {
+      id: '2',
+      title: '정기 회의',
+      date: '2025-10-16',
+      startTime: '11:00',
+      endTime: '12:00',
+      description: '정기 팀 미팅',
+      location: '회의실 A',
+      category: '업무',
+      repeat: { type: 'daily', interval: 1, endDate: '2025-10-16' },
+      notificationTime: 10,
+    },
+  ];
+
+  server.use(
+    http.get('/api/events', () => {
+      return HttpResponse.json({ events: mockEvents });
+    }),
+    http.put('/api/events/:id', async ({ params, request }) => {
+      const { id } = params;
+      const updatedEvent = (await request.json()) as Event;
+      const index = mockEvents.findIndex((event) => event.id === id);
+
+      mockEvents[index] = { ...mockEvents[index], ...updatedEvent };
+      return HttpResponse.json(mockEvents[index]);
+    })
+  );
+};
+
+// 반복 일정 삭제 - 함수명 수정 필요
+export const setupMockHandlerDeleteRepeat = () => {
+  const mockEvents: Event[] = [
+    {
+      id: '1',
+      title: '정기 회의',
+      date: '2025-10-15',
+      startTime: '11:00',
+      endTime: '12:00',
+      description: '정기 팀 미팅',
+      location: '회의실 A',
+      category: '업무',
+      repeat: { type: 'daily', interval: 1, endDate: '2025-10-16' },
+      notificationTime: 10,
+    },
+    {
+      id: '2',
+      title: '정기 회의',
+      date: '2025-10-16',
+      startTime: '11:00',
+      endTime: '12:00',
+      description: '정기 팀 미팅',
+      location: '회의실 A',
+      category: '업무',
+      repeat: { type: 'daily', interval: 1, endDate: '2025-10-16' },
+      notificationTime: 10,
+    },
+  ];
+
+  server.use(
+    http.get('/api/events', () => {
+      return HttpResponse.json({ events: mockEvents });
+    }),
+    http.delete('/api/events/:id', ({ params }) => {
+      const { id } = params;
+      const index = mockEvents.findIndex((event) => event.id === id);
+
+      mockEvents.splice(index, 1);
+      return new HttpResponse(null, { status: 204 });
+    })
+  );
+};
+
 export const setupMockHandlerListUpdating = () => {
   const mockEvents: Event[] = [
     {
