@@ -410,3 +410,14 @@ src/
    - 단계별 커밋으로 롤백 포인트 확보
    - 문제 발생 시 즉시 롤백
    - 롤백 후 원인 분석
+
+## QA Results
+
+- Gate Decision: PASS
+- Rationale:
+  - `weekdays` 선택/검증/계산 로직 및 excludeDates와의 조합 정상
+  - UI 토글/프리셋/미리보기 구현 확인, 회귀 시나리오 그린
+  - 전체 테스트 통과 확인
+- Risks/Notes:
+  - UI 컴포넌트 테스트 미작성 → 후속 권장
+  - `weekdayPattern` 타입/프리셋 정식 도입은 추후 범위
