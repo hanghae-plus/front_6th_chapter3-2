@@ -77,6 +77,24 @@ export function calculateRepeatingDates(repeatInfo: RepeatInfo, startDate: strin
         nextDate = addDays(currentDate, repeatInfo.interval);
         break;
       case 'weekly':
+        // 요일 지정이 있는 경우, 하루씩 전진하며 주차 간격과 요일을 필터링
+        if (Array.isArray(repeatInfo.weekdays) && repeatInfo.weekdays.length > 0) {
+          nextDate = addDays(currentDate, 1);
+          // 주차 간격 필터 (시작일 기준)
+          const weeksBetween = Math.floor(
+            (nextDate.getTime() - start.getTime()) / (7 * 24 * 60 * 60 * 1000)
+          );
+          const day = nextDate.getDay();
+          const isAlignedWeek = weeksBetween % repeatInfo.interval === 0;
+          const isSelectedWeekday = repeatInfo.weekdays.includes(day);
+          if (!isAlignedWeek || !isSelectedWeekday) {
+            // 다음 루프에서 다시 검사
+            currentDate = nextDate;
+            iteration++;
+            continue;
+          }
+          break;
+        }
         nextDate = addWeeks(currentDate, repeatInfo.interval);
         break;
       case 'monthly':
@@ -94,7 +112,14 @@ export function calculateRepeatingDates(repeatInfo: RepeatInfo, startDate: strin
       break;
     }
 
-    dates.push(formatDate(nextDate));
+    const nextStr = formatDate(nextDate);
+    // 제외 날짜가 설정된 경우 필터링
+    if (repeatInfo.excludeDates && repeatInfo.excludeDates.includes(nextStr)) {
+      currentDate = nextDate;
+      iteration++;
+      continue;
+    }
+    dates.push(nextStr);
     currentDate = nextDate;
     iteration++;
   }
@@ -177,7 +202,46 @@ export function validateRepeatSettings(repeatInfo: RepeatInfo): boolean {
     }
   }
 
+  // 제외 날짜 유효성 (옵션): 형식/중복/범위
+  if (Array.isArray(repeatInfo.excludeDates)) {
+    const seen = new Set<string>();
+    for (const d of repeatInfo.excludeDates) {
+      if (!isValidDateString(d)) return false;
+      if (seen.has(d)) return false;
+      seen.add(d);
+      if (repeatInfo.endDate) {
+        const target = new Date(d);
+        const end = new Date(repeatInfo.endDate);
+        if (target > end) return false;
+      }
+    }
+  }
+
   return true;
+}
+
+/**
+ * 제외 날짜 범위를 기존 목록과 병합하여 정렬/중복 제거된 배열을 반환
+ */
+export function mergeExcludeDateRange(
+  existing: string[],
+  rangeStart: string,
+  rangeEnd: string,
+  limitEnd?: string
+): string[] {
+  if (!isValidDateString(rangeStart) || !isValidDateString(rangeEnd)) return existing;
+  const start = new Date(rangeStart);
+  const end = new Date(rangeEnd);
+  if (start > end) return existing;
+  const last = limitEnd && isValidDateString(limitEnd) ? new Date(limitEnd) : null;
+
+  const set = new Set(existing);
+  for (let d = new Date(start); d <= end; d = addDays(d, 1)) {
+    const iso = formatDate(d);
+    if (last && d > last) break;
+    set.add(iso);
+  }
+  return Array.from(set).sort();
 }
 
 /**

@@ -46,7 +46,7 @@ import {
   getWeeksAtMonth,
 } from './utils/dateUtils';
 import { findOverlappingEvents } from './utils/eventOverlap';
-import { formatRepeatPreview } from './utils/repeatingEventUtils';
+import { formatRepeatPreview, mergeExcludeDateRange } from './utils/repeatingEventUtils';
 import { getTimeErrorMessage } from './utils/timeValidation';
 
 const categories = ['업무', '개인', '가족', '기타'];
@@ -93,6 +93,9 @@ function App() {
     handleEndTimeChange,
     resetForm,
     editEvent,
+    // 2.2 제외 날짜 관련 상태 (훅에서 제공)
+    excludeDates,
+    setExcludeDates,
   } = useEventForm();
 
   const { events, saveEvent, deleteEvent } = useEventOperations(Boolean(editingEvent), () =>
@@ -132,6 +135,7 @@ function App() {
         type: isRepeating ? repeatType : 'none',
         interval: repeatInterval,
         endDate: repeatEndDate || undefined,
+        ...(excludeDates.length ? { excludeDates } : {}),
       },
       notificationTime,
     };
@@ -444,6 +448,57 @@ function App() {
                   endDate: repeatEndDate || undefined,
                 })}
               </Typography>
+
+              {/* 제외 날짜 간이 UI (DatePicker 없이 기본 date 입력으로 최소 구현) */}
+              <Stack spacing={1}>
+                <FormLabel>제외 날짜</FormLabel>
+                <Stack direction="row" spacing={1}>
+                  <TextField
+                    size="small"
+                    type="date"
+                    value={''}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (!v) return;
+                      if (excludeDates.includes(v)) return;
+                      setExcludeDates([...excludeDates, v]);
+                    }}
+                  />
+                  <TextField size="small" type="date" id="range-start" />
+                  <TextField
+                    size="small"
+                    type="date"
+                    id="range-end"
+                    onChange={(e) => {
+                      const startEl = document.getElementById(
+                        'range-start'
+                      ) as HTMLInputElement | null;
+                      const start = startEl?.value;
+                      const end = e.target.value;
+                      if (!start || !end) return;
+                      const merged = mergeExcludeDateRange(
+                        excludeDates,
+                        start,
+                        end,
+                        repeatEndDate || undefined
+                      );
+                      setExcludeDates(merged);
+                    }}
+                  />
+                </Stack>
+                <Stack direction="row" spacing={1} flexWrap="wrap">
+                  {excludeDates.map((d) => (
+                    <Button
+                      key={d}
+                      size="small"
+                      variant="outlined"
+                      onClick={() => setExcludeDates(excludeDates.filter((x) => x !== d))}
+                    >
+                      {d} ×
+                    </Button>
+                  ))}
+                </Stack>
+              </Stack>
             </Stack>
           )}
 
@@ -534,6 +589,9 @@ function App() {
                         {event.repeat.type === 'yearly' && '년'}
                         마다
                         {event.repeat.endDate && ` (종료: ${event.repeat.endDate})`}
+                        {Array.isArray(event.repeat.excludeDates) &&
+                          event.repeat.excludeDates.length > 0 &&
+                          `, 제외 ${event.repeat.excludeDates.length}일`}
                       </Typography>
                     )}
                     <Typography>
@@ -592,6 +650,7 @@ function App() {
                   type: isRepeating ? repeatType : 'none',
                   interval: repeatInterval,
                   endDate: repeatEndDate || undefined,
+                  ...(excludeDates.length ? { excludeDates } : {}),
                 },
                 notificationTime,
               });

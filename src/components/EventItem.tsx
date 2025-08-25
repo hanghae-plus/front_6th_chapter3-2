@@ -36,33 +36,40 @@ export function EventItem({ event, isNotified }: EventItemProps) {
         },
       }}
     >
-      <Stack direction="row" spacing={1} alignItems="center">
-        {isNotified && <Notifications data-testid="notification-icon" fontSize="small" />}
-        {isRepeating && (
+      <Stack spacing={0.25}>
+        <Stack direction="row" spacing={1} alignItems="center">
+          {isNotified && <Notifications data-testid="notification-icon" fontSize="small" />}
+          {isRepeating && (
+            <Typography
+              data-testid="repeat-icon"
+              variant="caption"
+              sx={{ display: 'flex', alignItems: 'center', fontSize: '1rem', opacity: 0.8 }}
+            >
+              {repeatIcon}
+            </Typography>
+          )}
           <Typography
-            data-testid="repeat-icon"
             variant="caption"
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              fontSize: '1rem', // 아이콘 크기 조정
-              opacity: 0.8, // 약간 투명하게
-            }}
+            noWrap
+            sx={{ fontSize: '0.75rem', lineHeight: 1.2, flex: 1 }}
           >
-            {repeatIcon}
+            {event.title}
+          </Typography>
+        </Stack>
+        {isRepeating && (
+          <Typography variant="caption" color="text.secondary">
+            반복: {event.repeat.interval}
+            {event.repeat.type === 'daily' && '일'}
+            {event.repeat.type === 'weekly' && '주'}
+            {event.repeat.type === 'monthly' && '월'}
+            {event.repeat.type === 'yearly' && '년'}
+            마다
+            {event.repeat.endDate && ` (종료: ${event.repeat.endDate})`}
+            {Array.isArray(event.repeat.excludeDates) &&
+              event.repeat.excludeDates.length > 0 &&
+              `, 제외 ${event.repeat.excludeDates.length}일`}
           </Typography>
         )}
-        <Typography
-          variant="caption"
-          noWrap
-          sx={{
-            fontSize: '0.75rem',
-            lineHeight: 1.2,
-            flex: 1, // 제목이 남은 공간을 채우도록
-          }}
-        >
-          {event.title}
-        </Typography>
       </Stack>
     </Box>
   );

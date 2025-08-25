@@ -113,6 +113,32 @@ describe('calculateRepeatingDates', () => {
 
     expect(result).toEqual(['2024-03-15']);
   });
+
+  it('should exclude dates listed in excludeDates', () => {
+    const repeatInfo: RepeatInfo = {
+      type: 'daily',
+      interval: 1,
+      endDate: '2024-01-05',
+      excludeDates: ['2024-01-03'],
+    };
+
+    const result = calculateRepeatingDates(repeatInfo, '2024-01-01');
+
+    expect(result).toEqual(['2024-01-01', '2024-01-02', '2024-01-04', '2024-01-05']);
+  });
+
+  it('should filter weekly dates by selected weekdays', () => {
+    const repeatInfo: RepeatInfo = {
+      type: 'weekly',
+      interval: 1,
+      endDate: '2024-02-05',
+      weekdays: [1, 3], // Mon, Wed
+    };
+
+    const result = calculateRepeatingDates(repeatInfo, '2024-01-29'); // Mon
+
+    expect(result).toEqual(['2024-01-29', '2024-01-31', '2024-02-05']);
+  });
 });
 
 describe('validateRepeatSettings', () => {
@@ -174,6 +200,35 @@ describe('validateRepeatSettings', () => {
     };
 
     expect(validateRepeatSettings(invalidSettings)).toBe(false);
+  });
+
+  it('should invalidate when excludeDates has invalid format or duplicates or out of range', () => {
+    expect(
+      validateRepeatSettings({
+        type: 'daily',
+        interval: 1,
+        endDate: '2024-01-10',
+        excludeDates: ['invalid'],
+      } as unknown as RepeatInfo)
+    ).toBe(false);
+
+    expect(
+      validateRepeatSettings({
+        type: 'daily',
+        interval: 1,
+        endDate: '2024-01-10',
+        excludeDates: ['2024-01-05', '2024-01-05'],
+      } as RepeatInfo)
+    ).toBe(false);
+
+    expect(
+      validateRepeatSettings({
+        type: 'daily',
+        interval: 1,
+        endDate: '2024-01-05',
+        excludeDates: ['2024-01-06'],
+      } as RepeatInfo)
+    ).toBe(false);
   });
 });
 
