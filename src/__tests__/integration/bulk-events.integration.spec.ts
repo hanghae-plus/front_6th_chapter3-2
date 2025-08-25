@@ -3,10 +3,6 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { setupMockHandlerBulkOperations } from '../../__mocks__/handlersUtils';
 import type { Event } from '../../types';
 
-function pick<T extends object, K extends keyof T>(obj: T, keys: K[]): Pick<T, K> {
-  return keys.reduce((acc, k) => ({ ...acc, [k]: obj[k] }), {} as Pick<T, K>);
-}
-
 describe('Integration - Bulk Events API', () => {
   beforeEach(() => {
     setupMockHandlerBulkOperations([]);
