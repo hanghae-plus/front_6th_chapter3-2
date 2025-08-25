@@ -1,4 +1,5 @@
 import type { Event } from '../types';
+import { normalizeEvents } from './eventMigrations';
 import { generateEventInstances } from './repeatingEventUtils';
 
 const STORAGE_KEY = 'events';
@@ -12,7 +13,9 @@ export async function loadEvents(): Promise<Event[]> {
     if (!storedEvents) {
       return [];
     }
-    return JSON.parse(storedEvents);
+    const parsed: Event[] = JSON.parse(storedEvents);
+    // 수신 즉시 정규화(마이그레이션 흡수)
+    return normalizeEvents(parsed);
   } catch (error) {
     console.error('Failed to load events:', error);
     return [];
@@ -38,7 +41,8 @@ export async function saveEvents(events: Event[]): Promise<boolean> {
     });
 
     // 기존 이벤트와 새 이벤트 병합
-    const allEvents = [...existingEvents, ...expandedEvents];
+    // 저장 전 최종 정규화
+    const allEvents = normalizeEvents([...existingEvents, ...expandedEvents]);
 
     // 저장
     localStorage.setItem(STORAGE_KEY, JSON.stringify(allEvents));

@@ -103,6 +103,23 @@ export function calculateRepeatingDates(repeatInfo: RepeatInfo, startDate: strin
 }
 
 /**
+ * 간격/유형/종료일 정보를 사람이 읽을 수 있는 문구로 변환
+ */
+export function formatRepeatPreview(repeatInfo: RepeatInfo): string {
+  if (repeatInfo.type === 'none') return '반복 안 함';
+  const unit =
+    repeatInfo.type === 'daily'
+      ? '일'
+      : repeatInfo.type === 'weekly'
+        ? '주'
+        : repeatInfo.type === 'monthly'
+          ? '개월'
+          : '년';
+  const base = `${repeatInfo.interval}${unit}마다`;
+  return repeatInfo.endDate ? `${base} (종료: ${repeatInfo.endDate})` : base;
+}
+
+/**
  * 반복 설정의 유효성을 검사하는 함수
  * @param repeatInfo 반복 설정 정보
  * @returns 유효성 검사 결과
@@ -126,8 +143,12 @@ export function validateRepeatSettings(repeatInfo: RepeatInfo): boolean {
     return false;
   }
 
-  // 반복 간격이 유효한지 검사 (1 이상의 정수)
-  if (!Number.isInteger(repeatInfo.interval) || repeatInfo.interval < 1) {
+  // 반복 간격이 유효한지 검사 (1-99 범위의 정수)
+  if (
+    !Number.isInteger(repeatInfo.interval) ||
+    repeatInfo.interval < 1 ||
+    repeatInfo.interval > 99
+  ) {
     return false;
   }
 

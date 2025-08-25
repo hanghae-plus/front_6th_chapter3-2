@@ -36,7 +36,7 @@ import { useEventForm } from './hooks/useEventForm.ts';
 import { useEventOperations } from './hooks/useEventOperations.ts';
 import { useNotifications } from './hooks/useNotifications.ts';
 import { useSearch } from './hooks/useSearch.ts';
-import { Event, EventForm } from './types';
+import { Event, EventForm, RepeatType } from './types';
 import {
   formatDate,
   formatMonth,
@@ -46,6 +46,7 @@ import {
   getWeeksAtMonth,
 } from './utils/dateUtils';
 import { findOverlappingEvents } from './utils/eventOverlap';
+import { formatRepeatPreview } from './utils/repeatingEventUtils';
 import { getTimeErrorMessage } from './utils/timeValidation';
 
 const categories = ['업무', '개인', '가족', '기타'];
@@ -77,11 +78,11 @@ function App() {
     isRepeating,
     setIsRepeating,
     repeatType,
-    // setRepeatType,
+    setRepeatType,
     repeatInterval,
-    // setRepeatInterval,
+    setRepeatInterval,
     repeatEndDate,
-    // setRepeatEndDate,
+    setRepeatEndDate,
     notificationTime,
     setNotificationTime,
     startTimeError,
@@ -387,8 +388,7 @@ function App() {
             </Select>
           </FormControl>
 
-          {/* ! 반복은 8주차 과제에 포함됩니다. 구현하고 싶어도 참아주세요~ */}
-          {/* {isRepeating && (
+          {isRepeating && (
             <Stack spacing={2}>
               <FormControl fullWidth>
                 <FormLabel>반복 유형</FormLabel>
@@ -410,8 +410,21 @@ function App() {
                     size="small"
                     type="number"
                     value={repeatInterval}
-                    onChange={(e) => setRepeatInterval(Number(e.target.value))}
-                    slotProps={{ htmlInput: { min: 1 } }}
+                    onChange={(e) => {
+                      const next = Number(e.target.value);
+                      if (Number.isNaN(next)) {
+                        setRepeatInterval(1);
+                        return;
+                      }
+                      if (next < 1) {
+                        setRepeatInterval(1);
+                      } else if (next > 99) {
+                        setRepeatInterval(99);
+                      } else {
+                        setRepeatInterval(next);
+                      }
+                    }}
+                    slotProps={{ htmlInput: { min: 1, max: 99 } }}
                   />
                 </FormControl>
                 <FormControl fullWidth>
@@ -424,8 +437,15 @@ function App() {
                   />
                 </FormControl>
               </Stack>
+              <Typography variant="body2" color="text.secondary">
+                {formatRepeatPreview({
+                  type: repeatType,
+                  interval: repeatInterval,
+                  endDate: repeatEndDate || undefined,
+                })}
+              </Typography>
             </Stack>
-          )} */}
+          )}
 
           <Button
             data-testid="event-submit-button"
