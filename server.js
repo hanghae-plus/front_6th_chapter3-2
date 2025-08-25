@@ -128,7 +128,7 @@ app.put('/api/events-list', async (req, res) => {
   }
 });
 
-// 여러 일정을 한 번에 삭제
+// 일정 목록 삭제
 app.delete('/api/events-list', async (req, res) => {
   const events = await getEvents();
   const newEvents = events.events.filter((event) => !req.body.eventIds.includes(event.id)); // ? ids를 전달하면 해당 아이디를 기준으로 events에서 제거

@@ -69,6 +69,14 @@ export const useEventOperations = (editing: boolean, onSave?: () => void) => {
     }
   };
 
+  // ------------------------- 여러 일정 처리 -------------------------
+
+  const saveEventList = async (_eventData: Event | EventForm) => {};
+
+  const deleteEventList = async (_ids: string[]) => {};
+
+  // -----------------------------------------------------------------
+
   async function init() {
     await fetchEvents();
     enqueueSnackbar('일정 로딩 완료!', { variant: 'info' });
@@ -79,5 +87,5 @@ export const useEventOperations = (editing: boolean, onSave?: () => void) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { events, fetchEvents, saveEvent, deleteEvent };
+  return { events, fetchEvents, saveEvent, deleteEvent, saveEventList, deleteEventList };
 };

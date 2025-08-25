@@ -10,6 +10,9 @@ import {
   setupMockHandlerCreation,
   setupMockHandlerDeletion,
   setupMockHandlerUpdating,
+  // setupMockHandlerListCreation,
+  // setupMockHandlerListUpdating,
+  // setupMockHandlerListDeletion,
 } from '../__mocks__/handlersUtils';
 import App from '../App';
 import { server } from '../setupTests';
@@ -345,30 +348,40 @@ it('notificationTime을 10으로 하면 지정 시간 10분 전 알람 텍스트
 
 describe('반복 기능', () => {
   describe('1. 반복 유형 선택', () => {
+    // 통합
     it('일정 생성/수정 시 매일, 매주, 매월, 매년 반복 유형을 선택할 수 있다', () => {});
 
+
+    // 훅
     it('31일에 매월 반복을 선택하면 매월 31일에만 생성된다', () => {});
 
+    // 훅
     it('윤년 2월 29일에 매년 반복을 선택하면 2월 29일에만 생성된다', () => {});
   });
 
   describe('2. 반복 일정 표시', () => {
+    // 통합
     it('캘린더 뷰에서 반복 일정은 아이콘으로 표시된다', () => {});
   });
 
   describe('3. 반복 종료', () => {
+    // 훅
     it('반복 종료 조건으로 특정 날짜를 지정할 수 있다', () => {});
 
+    // 훅
     it('반복 종료일이 2025-10-30이면, 그 이후 일정은 생성되지 않는다', () => {});
   });
 
   describe('4. 반복 일정 단일 수정', () => {
+    // 훅
     it('반복 일정을 수정하면 해당 일정은 단일 일정으로 변경된다', () => {});
 
+    // 통합
     it('수정된 일정에서는 반복 일정 아이콘이 사라진다', () => {});
   });
 
   describe('5. 반복 일정 단일 삭제', () => {
+    // 훅
     it('반복 일정을 삭제하면 해당 일정만 삭제된다', () => {});
   });
 });

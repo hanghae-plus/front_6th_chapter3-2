@@ -441,7 +441,7 @@ function App() {
             </Select>
           </FormControl>
 
-          {/* 반복 처리 */}
+          {/* -------------------- 반복 처리 -------------------- */}
           {isRepeating && (
             <Stack spacing={2}>
               <FormControl fullWidth>
@@ -480,6 +480,7 @@ function App() {
               </Stack>
             </Stack>
           )}
+          {/* -------------------------------------------------- */}
 
           <Button
             data-testid="event-submit-button"
