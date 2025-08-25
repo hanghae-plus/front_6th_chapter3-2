@@ -22,6 +22,7 @@ export const useEventForm = (initialEvent?: Event) => {
   const [excludeDates, setExcludeDates] = useState<string[]>(
     initialEvent?.repeat.excludeDates || []
   );
+  const [weekdays, setWeekdays] = useState<number[]>(initialEvent?.repeat.weekdays || []);
   const [notificationTime, setNotificationTime] = useState(initialEvent?.notificationTime || 10);
 
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
@@ -56,6 +57,7 @@ export const useEventForm = (initialEvent?: Event) => {
     setRepeatInterval(1);
     setRepeatEndDate('');
     setExcludeDates([]);
+    setWeekdays([]);
     setNotificationTime(10);
   };
 
@@ -73,6 +75,7 @@ export const useEventForm = (initialEvent?: Event) => {
     setRepeatInterval(event.repeat.interval);
     setRepeatEndDate(event.repeat.endDate || '');
     setExcludeDates(event.repeat.excludeDates || []);
+    setWeekdays(event.repeat.weekdays || []);
     setNotificationTime(event.notificationTime);
   };
 
@@ -92,6 +95,7 @@ export const useEventForm = (initialEvent?: Event) => {
         interval: repeatInterval,
         endDate: repeatEndDate || undefined,
         excludeDates: excludeDates.length ? excludeDates : undefined,
+        weekdays: weekdays.length ? weekdays : undefined,
       },
       notificationTime,
     };
@@ -103,6 +107,7 @@ export const useEventForm = (initialEvent?: Event) => {
         interval: repeatInterval,
         endDate: repeatEndDate,
         excludeDates,
+        weekdays,
       };
 
       if (!validateRepeatSettings(repeatInfo)) {
@@ -169,5 +174,7 @@ export const useEventForm = (initialEvent?: Event) => {
     createEvents,
     excludeDates,
     setExcludeDates,
+    weekdays,
+    setWeekdays,
   };
 };

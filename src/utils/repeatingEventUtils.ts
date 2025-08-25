@@ -217,6 +217,14 @@ export function validateRepeatSettings(repeatInfo: RepeatInfo): boolean {
     }
   }
 
+  // 요일 선택 유효성 (옵션): 주간인 경우 최소 1개, 0-6 범위
+  if (repeatInfo.type === 'weekly' && Array.isArray(repeatInfo.weekdays)) {
+    if (repeatInfo.weekdays.length === 0) return false;
+    for (const d of repeatInfo.weekdays) {
+      if (!Number.isInteger(d) || d < 0 || d > 6) return false;
+    }
+  }
+
   return true;
 }
 

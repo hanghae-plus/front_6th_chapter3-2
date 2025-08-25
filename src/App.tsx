@@ -26,6 +26,8 @@ import {
   TextField,
   Tooltip,
   Typography,
+  ToggleButton,
+  ToggleButtonGroup,
 } from '@mui/material';
 import { useSnackbar } from 'notistack';
 import { useState } from 'react';
@@ -96,6 +98,8 @@ function App() {
     // 2.2 제외 날짜 관련 상태 (훅에서 제공)
     excludeDates,
     setExcludeDates,
+    weekdays,
+    setWeekdays,
   } = useEventForm();
 
   const { events, saveEvent, deleteEvent } = useEventOperations(Boolean(editingEvent), () =>
@@ -136,6 +140,7 @@ function App() {
         interval: repeatInterval,
         endDate: repeatEndDate || undefined,
         ...(excludeDates.length ? { excludeDates } : {}),
+        ...(repeatType === 'weekly' && weekdays.length ? { weekdays } : {}),
       },
       notificationTime,
     };
@@ -407,6 +412,33 @@ function App() {
                   <MenuItem value="yearly">매년</MenuItem>
                 </Select>
               </FormControl>
+              {repeatType === 'weekly' && (
+                <Stack>
+                  <FormLabel>요일 선택</FormLabel>
+                  <ToggleButtonGroup
+                    value={weekdays}
+                    onChange={(_, next: number[]) => setWeekdays(next.sort())}
+                    size="small"
+                  >
+                    {['일', '월', '화', '수', '목', '금', '토'].map((label, idx) => (
+                      <ToggleButton key={label} value={idx} aria-label={`weekday-${idx}`}>
+                        {label}
+                      </ToggleButton>
+                    ))}
+                  </ToggleButtonGroup>
+                  <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                    <Button size="small" onClick={() => setWeekdays([1, 2, 3, 4, 5])}>
+                      평일
+                    </Button>
+                    <Button size="small" onClick={() => setWeekdays([0, 6])}>
+                      주말
+                    </Button>
+                    <Button size="small" onClick={() => setWeekdays([])}>
+                      초기화
+                    </Button>
+                  </Stack>
+                </Stack>
+              )}
               <Stack direction="row" spacing={2}>
                 <FormControl fullWidth>
                   <FormLabel>반복 간격</FormLabel>
@@ -447,6 +479,9 @@ function App() {
                   interval: repeatInterval,
                   endDate: repeatEndDate || undefined,
                 })}
+                {repeatType === 'weekly' &&
+                  weekdays.length > 0 &&
+                  ` · 요일: ${weekdays.map((d) => ['일', '월', '화', '수', '목', '금', '토'][d]).join(', ')}`}
               </Typography>
 
               {/* 제외 날짜 간이 UI (DatePicker 없이 기본 date 입력으로 최소 구현) */}
@@ -651,6 +686,7 @@ function App() {
                   interval: repeatInterval,
                   endDate: repeatEndDate || undefined,
                   ...(excludeDates.length ? { excludeDates } : {}),
+                  ...(repeatType === 'weekly' && weekdays.length ? { weekdays } : {}),
                 },
                 notificationTime,
               });
