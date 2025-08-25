@@ -10,25 +10,35 @@ beforeAll(() => {
 
 describe('Regression - Story 2.2', () => {
   it('기존 반복 계산 로직이 excludeDates 추가 후에도 동일하게 동작한다', () => {
+    // Given
     const base: RepeatInfo = { type: 'daily', interval: 1, endDate: '2024-01-05' };
-    const before = calculateRepeatingDates(base, '2024-01-01');
 
+    // When
+    const before = calculateRepeatingDates(base, '2024-01-01');
     const after = calculateRepeatingDates({ ...base, excludeDates: [] }, '2024-01-01');
+
+    // Then
     expect(after).toEqual(before);
   });
 
   it('excludeDates에 포함된 날짜만 정확히 제외된다', () => {
+    // Given
     const repeatInfo: RepeatInfo = {
       type: 'daily',
       interval: 1,
       endDate: '2024-01-05',
       excludeDates: ['2024-01-03'],
     };
+
+    // When
     const dates = calculateRepeatingDates(repeatInfo, '2024-01-01');
+
+    // Then
     expect(dates).toEqual(['2024-01-01', '2024-01-02', '2024-01-04', '2024-01-05']);
   });
 
   it('유효성 검증은 interval 범위(1-99)와 타입만 영향을 받으며 excludeDates는 통과에 영향 주지 않는다', () => {
+    // Given / When / Then
     expect(
       validateRepeatSettings({
         type: 'daily',
