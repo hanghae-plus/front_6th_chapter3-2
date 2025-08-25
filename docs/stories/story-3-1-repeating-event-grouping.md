@@ -54,14 +54,37 @@ interface Event {
 
 ## Definition of Done
 
-- [ ] Event 타입에 repeat.id 필드가 추가됨
-- [ ] POST `/api/events-list` API가 구현되고 테스트됨
-- [ ] PUT `/api/events-list` API가 구현되고 테스트됨
-- [ ] DELETE `/api/events-list` API가 구현되고 테스트됨
-- [ ] repeat.id 시스템이 정상 동작함
-- [ ] API 응답이 올바른 형식을 반환함
-- [ ] 단위 테스트가 작성되고 통과함
-- [ ] API 문서가 업데이트됨
+- [x] Event 타입에 repeat.id 필드가 추가됨 (RepeatInfo.id로 반영)
+- [x] POST `/api/events-list` API가 구현되고 테스트됨
+- [x] PUT `/api/events-list` API가 구현되고 테스트됨
+- [x] DELETE `/api/events-list` API가 구현되고 테스트됨
+- [x] repeat.id 시스템이 정상 동작함 (모든 인스턴스 동일 id 부여)
+- [x] API 응답이 올바른 형식을 반환함
+- [x] 단위 테스트가 작성되고 통과함 (repeat.id 그룹 일관성)
+- [x] API 문서가 업데이트됨
+
+## UI 흐름 초안 (repeat.id 기반 일괄 수정/삭제)
+
+1. 선택 모드 진입
+   - 리스트/캘린더에서 반복 이벤트 항목 선택 시 `선택 모드` 활성화 (체크박스/토글)
+   - 우측 상단에 그룹 작업 바(Action Bar) 노출: "그룹 수정", "그룹 삭제"
+
+2. 그룹 수정 (PUT /api/events-list)
+   - 사용자가 편집 폼에서 변경 사항 입력 → 저장 시 선택한 반복 이벤트들의 `repeat.id`를 수집
+   - 클라이언트는 해당 id에 속한 이벤트들의 변경 필드를 합쳐 `events` 배열로 전송
+   - 성공 시: 스낵바 "그룹이 수정되었습니다" 노출, 목록 새로고침
+   - 실패 시: 스낵바 "그룹 수정 실패" 노출 및 개별 실패 항목 로그 기록
+
+3. 그룹 삭제 (DELETE /api/events-list)
+   - 삭제 확인 다이얼로그(개수/날짜 범위 요약) → 확인 시 진행
+   - 클라이언트는 그룹의 모든 `eventIds`를 수집하여 삭제 요청 전송
+   - 성공 시: 스낵바 "그룹이 삭제되었습니다" 노출, 목록 새로고침
+   - 실패 시: 스낵바 "그룹 삭제 실패" 노출, 성공/실패 건수 요약 표시
+
+4. 예외 및 경계
+   - 혼합 선택(반복/단일) 시: 단일 일정은 개별 처리, 반복은 그룹 처리로 분기
+   - 부분 실패 시: 성공 항목 반영 + 실패 항목 재시도/되돌리기 옵션 제공
+   - 접근성: 키보드 포커스 이동, 다이얼로그 역할/레이블 제공
 
 ## Risk Assessment
 
@@ -353,3 +376,134 @@ src/
    - 단계별 커밋으로 롤백 포인트 확보
    - 문제 발생 시 즉시 롤백
    - 롤백 후 원인 분석
+
+## API 문서
+
+### 공통 타입 (발췌)
+
+```typescript
+type RepeatType = 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
+
+interface RepeatInfo {
+  type: RepeatType;
+  interval: number;
+  endDate?: string;
+  excludeDates?: string[];
+  weekdays?: number[]; // 0(Sun) - 6(Sat)
+  id?: string; // 반복 이벤트 그룹 ID (서버/생성 로직에서 부여)
+}
+
+interface Event {
+  id: string;
+  title: string;
+  date: string;           // YYYY-MM-DD
+  startTime: string;      // HH:mm
+  endTime: string;        // HH:mm
+  description: string;
+  location: string;
+  category: string;
+  repeat: RepeatInfo;
+  notificationTime: number; // 분 단위
+}
+```
+
+### GET /api/events
+
+- 응답: 200 OK
+- Body:
+
+```json
+{
+  "events": [ { /* Event */ } ]
+}
+```
+
+### POST /api/events-list
+
+- 설명: 여러 이벤트를 일괄 생성. 반복 이벤트(`repeat.type !== 'none'`)는 동일한 `repeat.id`가 자동 부여됨
+- 응답: 201 Created
+- Request Body:
+
+```json
+{
+  "events": [
+    {
+      "title": "A",
+      "date": "2024-01-01",
+      "startTime": "09:00",
+      "endTime": "10:00",
+      "description": "",
+      "location": "",
+      "category": "업무",
+      "repeat": { "type": "daily", "interval": 1, "endDate": "2024-01-05" },
+      "notificationTime": 10
+    }
+  ]
+}
+```
+
+- Response Body: 생성된 `Event[]` (배열, 래핑 없음)
+
+```json
+[
+  {
+    "id": "...",
+    "title": "A",
+    "date": "2024-01-01",
+    "startTime": "09:00",
+    "endTime": "10:00",
+    "description": "",
+    "location": "",
+    "category": "업무",
+    "repeat": { "type": "daily", "interval": 1, "endDate": "2024-01-05", "id": "repeat-group-id" },
+    "notificationTime": 10
+  }
+]
+```
+
+- 오류: 400 잘못된 페이로드, 500 서버 오류
+
+### PUT /api/events-list
+
+- 설명: 여러 이벤트를 일괄 수정. 각 이벤트의 `id` 반드시 필요
+- 응답: 200 OK
+- Request Body:
+
+```json
+{
+  "events": [ { "id": "...", "title": "A-updated" } ]
+}
+```
+
+- Response Body: 전체 이벤트 목록 `Event[]` (배열, 래핑 없음)
+- 오류: 404 해당 이벤트 없음, 400 잘못된 페이로드, 500 서버 오류
+
+### DELETE /api/events-list
+
+- 설명: 여러 이벤트를 일괄 삭제
+- 응답: 204 No Content
+- Request Body:
+
+```json
+{ "eventIds": ["id-1", "id-2"] }
+```
+
+- 오류: 404 해당 이벤트 없음, 400 잘못된 페이로드, 500 서버 오류
+
+### 동작 상 주의 사항
+
+- POST: 반복 이벤트 집합 생성 시 동일 `repeat.id`가 자동 부여됨. 단일 일정(`none`)은 `repeat.id` 없음
+- PUT: 부분 업데이트 허용. 서버는 존재하는 항목만 갱신하며 응답으로 전체 목록을 반환
+- DELETE: 일부만 삭제 가능한 경우에도 204 또는 404를 반환할 수 있음(서버 구현에 따름)
+
+## QA Results
+
+- Gate Decision: PASS
+- Rationale:
+  - 타입에 `RepeatInfo.id` 추가 및 생성 로직의 그룹 ID 일관 부여 검증 완료
+  - 서버 API(POST/PUT/DELETE `/api/events-list`) 구현 및 통합 테스트 통과
+  - UI 선택 모드/그룹 수정·삭제 플로우 추가 및 UI 회귀 테스트 통과
+  - 문서(API/흐름/DoD) 업데이트 완료
+- Risks/Notes:
+  - 그룹 편집 항목은 현재 제목만 예시로 일괄 수정(추가 필드 확장 여지)
+  - 선택 모드 접근성(a11y) 향상 여지(포커스 이동/역할/레이블 강화)

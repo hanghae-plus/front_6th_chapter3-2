@@ -279,12 +279,15 @@ export function generateEventInstances(repeatInfo: RepeatInfo, baseEvent: Event)
 
   // 반복 날짜 계산
   const dates = calculateRepeatingDates(repeatInfo, baseEvent.date);
+  // 그룹 ID 부여: 반복 이벤트면 동일한 repeat.id 유지/생성
+  const groupId = repeatInfo.id ?? generateUUID();
+  const repeatWithGroup: RepeatInfo = { ...repeatInfo, id: groupId };
 
   // 각 날짜에 대해 이벤트 인스턴스 생성
   return dates.map((date) => ({
     ...baseEvent,
     id: generateUUID(), // 각 인스턴스에 고유 ID 부여
     date,
-    repeat: repeatInfo,
+    repeat: repeatWithGroup,
   }));
 }

@@ -280,6 +280,25 @@ describe('generateEventInstances', () => {
     expect(result[3].date).toBe('2024-01-22');
   });
 
+  it('assigns the same repeat.id for all generated instances (grouping)', () => {
+    const repeatInfo: RepeatInfo = {
+      type: 'daily',
+      interval: 1,
+      endDate: '2024-01-03',
+    };
+
+    const baseEvent: Event = {
+      ...mockEvent,
+      date: '2024-01-01',
+    };
+
+    const result = generateEventInstances(repeatInfo, baseEvent);
+    // 모두 repeat.id가 존재하며 동일해야 한다
+    const ids = new Set(result.map((e) => e.repeat.id));
+    expect(ids.size).toBe(1);
+    expect([...ids][0]).toBeTruthy();
+  });
+
   it('should generate monthly repeating events correctly', () => {
     const repeatInfo: RepeatInfo = {
       type: 'monthly',

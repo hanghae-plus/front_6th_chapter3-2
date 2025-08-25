@@ -94,6 +94,66 @@ export const useEventOperations = (editing: boolean, onSave?: () => void) => {
     }
   };
 
+  const saveBulkEvents = async (bulkEvents: Event[]) => {
+    try {
+      const response = await fetch('/api/events-list', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ events: bulkEvents }),
+      });
+      if (!response.ok) {
+        enqueueSnackbar('그룹 저장 실패', { variant: 'error' });
+        throw new Error('Failed to save bulk events');
+      }
+      await fetchEvents();
+      enqueueSnackbar('그룹이 생성되었습니다.', { variant: 'success' });
+    } catch (error) {
+      console.error('Error saving bulk events:', error);
+      enqueueSnackbar('그룹 저장 실패', { variant: 'error' });
+      throw error;
+    }
+  };
+
+  const updateBulkEvents = async (bulkEvents: Event[]) => {
+    try {
+      const response = await fetch('/api/events-list', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ events: bulkEvents }),
+      });
+      if (!response.ok) {
+        enqueueSnackbar('그룹 수정 실패', { variant: 'error' });
+        throw new Error('Failed to update bulk events');
+      }
+      await fetchEvents();
+      enqueueSnackbar('그룹이 수정되었습니다.', { variant: 'success' });
+    } catch (error) {
+      console.error('Error updating bulk events:', error);
+      enqueueSnackbar('그룹 수정 실패', { variant: 'error' });
+      throw error;
+    }
+  };
+
+  const deleteBulkEvents = async (eventIds: string[]) => {
+    try {
+      const response = await fetch('/api/events-list', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventIds }),
+      });
+      if (!response.ok) {
+        enqueueSnackbar('그룹 삭제 실패', { variant: 'error' });
+        throw new Error('Failed to delete bulk events');
+      }
+      await fetchEvents();
+      enqueueSnackbar('그룹이 삭제되었습니다.', { variant: 'info' });
+    } catch (error) {
+      console.error('Error deleting bulk events:', error);
+      enqueueSnackbar('그룹 삭제 실패', { variant: 'error' });
+      throw error;
+    }
+  };
+
   async function init() {
     try {
       await fetchEvents();
@@ -108,5 +168,13 @@ export const useEventOperations = (editing: boolean, onSave?: () => void) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { events, fetchEvents, saveEvent, deleteEvent };
+  return {
+    events,
+    fetchEvents,
+    saveEvent,
+    deleteEvent,
+    saveBulkEvents,
+    updateBulkEvents,
+    deleteBulkEvents,
+  };
 };

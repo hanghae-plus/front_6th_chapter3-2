@@ -102,8 +102,9 @@ function App() {
     setWeekdays,
   } = useEventForm();
 
-  const { events, saveEvent, deleteEvent } = useEventOperations(Boolean(editingEvent), () =>
-    setEditingEvent(null)
+  const { events, saveEvent, deleteEvent, updateBulkEvents, deleteBulkEvents } = useEventOperations(
+    Boolean(editingEvent),
+    () => setEditingEvent(null)
   );
 
   const { notifications, notifiedEvents, setNotifications } = useNotifications(events);
@@ -112,6 +113,10 @@ function App() {
 
   const [isOverlapDialogOpen, setIsOverlapDialogOpen] = useState(false);
   const [overlappingEvents, setOverlappingEvents] = useState<Event[]>([]);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkEditOpen, setBulkEditOpen] = useState(false);
+  const [bulkEditTitle, setBulkEditTitle] = useState('');
 
   const { enqueueSnackbar } = useSnackbar();
 
@@ -581,6 +586,51 @@ function App() {
           spacing={2}
           sx={{ width: '30%', height: '100%', overflowY: 'auto' }}
         >
+          <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
+            <Typography variant="h6">일정 목록</Typography>
+            <Stack direction="row" spacing={1}>
+              {!selectionMode ? (
+                <Button size="small" variant="outlined" onClick={() => setSelectionMode(true)}>
+                  선택 모드
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => {
+                      setSelectedIds([]);
+                      setSelectionMode(false);
+                    }}
+                  >
+                    선택 해제
+                  </Button>
+                  <Button
+                    size="small"
+                    color="primary"
+                    variant="contained"
+                    disabled={selectedIds.length === 0}
+                    onClick={() => setBulkEditOpen(true)}
+                  >
+                    그룹 수정
+                  </Button>
+                  <Button
+                    size="small"
+                    color="error"
+                    variant="contained"
+                    disabled={selectedIds.length === 0}
+                    onClick={async () => {
+                      await deleteBulkEvents(selectedIds);
+                      setSelectedIds([]);
+                      setSelectionMode(false);
+                    }}
+                  >
+                    그룹 삭제
+                  </Button>
+                </>
+              )}
+            </Stack>
+          </Stack>
           <FormControl fullWidth>
             <FormLabel htmlFor="search">일정 검색</FormLabel>
             <TextField
@@ -597,8 +647,33 @@ function App() {
           ) : (
             filteredEvents.map((event) => (
               <Box key={event.id} sx={{ border: 1, borderRadius: 2, p: 3, width: '100%' }}>
-                <Stack direction="row" justifyContent="space-between">
+                <Stack direction="row" justifyContent="space-between" alignItems="center">
                   <Stack>
+                    {selectionMode && (
+                      <Stack direction="row" alignItems="center" spacing={1}>
+                        <Checkbox
+                          size="small"
+                          checked={selectedIds.includes(event.id)}
+                          onChange={() => {
+                            // 같은 repeat.id를 가진 이벤트를 한 번에 토글
+                            const groupId = event.repeat.id;
+                            const groupIds = groupId
+                              ? events.filter((e) => e.repeat.id === groupId).map((e) => e.id)
+                              : [event.id];
+
+                            const isAllSelected = groupIds.every((id) => selectedIds.includes(id));
+                            if (isAllSelected) {
+                              setSelectedIds(selectedIds.filter((id) => !groupIds.includes(id)));
+                            } else {
+                              setSelectedIds(Array.from(new Set([...selectedIds, ...groupIds])));
+                            }
+                          }}
+                        />
+                        <Typography variant="caption">
+                          {event.repeat.id ? '그룹 선택' : '선택'}
+                        </Typography>
+                      </Stack>
+                    )}
                     <Stack direction="row" spacing={1} alignItems="center">
                       {notifiedEvents.includes(event.id) && <Notifications color="error" />}
                       <Typography
@@ -638,14 +713,16 @@ function App() {
                       }
                     </Typography>
                   </Stack>
-                  <Stack>
-                    <IconButton aria-label="Edit event" onClick={() => editEvent(event)}>
-                      <Edit />
-                    </IconButton>
-                    <IconButton aria-label="Delete event" onClick={() => deleteEvent(event.id)}>
-                      <Delete />
-                    </IconButton>
-                  </Stack>
+                  {!selectionMode && (
+                    <Stack>
+                      <IconButton aria-label="Edit event" onClick={() => editEvent(event)}>
+                        <Edit />
+                      </IconButton>
+                      <IconButton aria-label="Delete event" onClick={() => deleteEvent(event.id)}>
+                        <Delete />
+                      </IconButton>
+                    </Stack>
+                  )}
                 </Stack>
               </Box>
             ))
@@ -693,6 +770,40 @@ function App() {
             }}
           >
             계속 진행
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={bulkEditOpen} onClose={() => setBulkEditOpen(false)}>
+        <DialogTitle>그룹 수정</DialogTitle>
+        <DialogContent>
+          <DialogContentText>선택된 이벤트들의 제목을 일괄 변경합니다.</DialogContentText>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="새 제목"
+            fullWidth
+            variant="standard"
+            value={bulkEditTitle}
+            onChange={(e) => setBulkEditTitle(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setBulkEditOpen(false)}>취소</Button>
+          <Button
+            onClick={async () => {
+              const updated = events
+                .filter((e) => selectedIds.includes(e.id))
+                .map((e) => ({ ...e, title: bulkEditTitle }));
+              await updateBulkEvents(updated as Event[]);
+              setBulkEditOpen(false);
+              setSelectedIds([]);
+              setSelectionMode(false);
+              setBulkEditTitle('');
+            }}
+            disabled={!bulkEditTitle}
+          >
+            저장
           </Button>
         </DialogActions>
       </Dialog>
