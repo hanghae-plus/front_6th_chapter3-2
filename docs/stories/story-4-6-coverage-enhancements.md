@@ -15,5 +15,5 @@ As a QA, I want high coverage on critical paths so that 회귀 위험을 낮춘�
 - MSW로 정상/에러/빈 응답 케이스 구성
 
 ## DoD
-- [ ] 라인≥85%, 브랜치≥80% 달성
-- [ ] 회귀 스위트에 시나리오 편입
+- [x] 라인≥85%, 브랜치≥80% 달성
+- [x] 회귀 스위트에 시나리오 편입

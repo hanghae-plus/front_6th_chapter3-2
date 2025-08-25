@@ -14,4 +14,4 @@ As a QA/Dev, I want meaningful assertions so that 변경 이유가 명확하다.
 - RTL 단언 우선, 스냅샷은 최소한으로
 
 ## DoD
-- [ ] 정리 PR 병합, 가이드 반영
+- [x] 정리 PR 병합, 가이드 반영

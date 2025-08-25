@@ -13,8 +13,9 @@ As a QA/Dev, I want a single test guideline so that tests are consistent and sta
 
 ## Technical Notes
 - GWT 패턴, 의미 있는 단언, 전역 MSW 최소화, 테스트별 `server.use(...)`
+- 참조: docs/qa/test-guidelines.md
 
 ## DoD
-- [ ] 문서 초안 작성 및 리뷰
-- [ ] 스토리/에픽 링크 반영
-- [ ] 예시 테스트 1건 리팩토링
+- [x] 문서 초안 작성 및 리뷰
+- [x] 스토리/에픽 링크 반영
+- [x] 예시 테스트 1건 리팩토링

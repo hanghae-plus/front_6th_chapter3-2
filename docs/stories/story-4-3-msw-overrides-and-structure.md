@@ -14,5 +14,5 @@ As a QA/Dev, I want isolated handlers so that tests are deterministic and indepe
 - 기존 핸들러 파일 구조 유지하되 story/test 로컬 오버라이드 사용 강화
 
 ## DoD
-- [ ] 샘플 테스트 2건 리팩토링
-- [ ] 가이드에 패턴 반영
+- [x] 샘플 테스트 2건 리팩토링
+- [x] 가이드에 패턴 반영

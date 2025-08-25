@@ -15,5 +15,5 @@ As a Dev, I want reusable builders/fixtures so that tests are concise and clear.
 - 타입은 `src/types.ts` 재사용, 기본값은 안정적인 결정값 사용
 
 ## DoD
-- [ ] 유틸 추가 및 샘플 리팩토링 2건
-- [ ] 문서(`test-guidelines.md`)에 예시 링크
+- [x] 유틸 추가 및 샘플 리팩토링 2건
+- [x] 문서(`test-guidelines.md`)에 예시 링크

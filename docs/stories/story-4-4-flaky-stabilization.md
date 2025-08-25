@@ -14,5 +14,5 @@ As a Dev, I want stable tests so that CI가 일관되게 통과한다.
 - Date/Intl, setTimeout 지연, Math.random 시드 처리
 
 ## DoD
-- [ ] 불안정 사례 2건 재현 및 고정
-- [ ] 가이드에 체크리스트 추가
+- [x] 불안정 사례 2건 재현 및 고정
+- [x] 가이드에 체크리스트 추가

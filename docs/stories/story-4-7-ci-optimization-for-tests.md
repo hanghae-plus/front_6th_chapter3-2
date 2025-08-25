@@ -14,5 +14,5 @@ As a DevOps, I want faster and reliable CI so that 개발 피드백 주기가 �
 - Vitest 캐시, 워크스페이스 분할, flaky 재시도 제한
 
 ## DoD
-- [ ] 파이프라인 설정 PR 병합
-- [ ] 실행 시간 리포트 공유
+- [x] 파이프라인 설정 PR 병합
+- [x] 실행 시간 리포트 공유
