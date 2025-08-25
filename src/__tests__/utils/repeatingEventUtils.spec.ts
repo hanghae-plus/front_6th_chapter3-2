@@ -139,6 +139,73 @@ describe('calculateRepeatingDates', () => {
 
     expect(result).toEqual(['2024-01-29', '2024-01-31', '2024-02-05']);
   });
+
+  it('should skip months without 31 when starting on 31st (monthly)', () => {
+    const repeatInfo: RepeatInfo = {
+      type: 'monthly',
+      interval: 1,
+      endDate: '2024-05-31',
+    };
+
+    const result = calculateRepeatingDates(repeatInfo, '2024-01-31');
+
+    expect(result).toEqual(['2024-01-31', '2024-03-31', '2024-05-31']);
+  });
+
+  it('should generate only leap-year instances when starting on Feb 29 (yearly)', () => {
+    const repeatInfo: RepeatInfo = {
+      type: 'yearly',
+      interval: 1,
+      endDate: '2030-12-31',
+    };
+
+    const result = calculateRepeatingDates(repeatInfo, '2024-02-29');
+
+    expect(result).toEqual(['2024-02-29', '2028-02-29']);
+  });
+
+  it('should cap generation at 2025-10-30 when endDate is missing', () => {
+    const repeatInfo: RepeatInfo = {
+      type: 'daily',
+      interval: 1,
+    };
+
+    const result = calculateRepeatingDates(repeatInfo, '2025-10-25');
+
+    expect(result).toEqual([
+      '2025-10-25',
+      '2025-10-26',
+      '2025-10-27',
+      '2025-10-28',
+      '2025-10-29',
+      '2025-10-30',
+    ]);
+  });
+
+  it('should not cap when endDate is provided (uses provided endDate even if later than cap)', () => {
+    const repeatInfo: RepeatInfo = {
+      type: 'daily',
+      interval: 1,
+      endDate: '2025-11-05',
+    };
+
+    const result = calculateRepeatingDates(repeatInfo, '2025-10-25');
+
+    expect(result).toEqual([
+      '2025-10-25',
+      '2025-10-26',
+      '2025-10-27',
+      '2025-10-28',
+      '2025-10-29',
+      '2025-10-30',
+      '2025-10-31',
+      '2025-11-01',
+      '2025-11-02',
+      '2025-11-03',
+      '2025-11-04',
+      '2025-11-05',
+    ]);
+  });
 });
 
 describe('validateRepeatSettings', () => {

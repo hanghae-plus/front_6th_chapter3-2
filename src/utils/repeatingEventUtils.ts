@@ -25,7 +25,7 @@ function addWeeks(date: Date, weeks: number): Date {
 /**
  * 날짜에 월수를 더하는 헬퍼 함수
  */
-function addMonths(date: Date, months: number): Date {
+export function addMonths(date: Date, months: number): Date {
   const result = new Date(date);
   result.setMonth(result.getMonth() + months);
   return result;
@@ -34,7 +34,7 @@ function addMonths(date: Date, months: number): Date {
 /**
  * 날짜에 연수를 더하는 헬퍼 함수
  */
-function addYears(date: Date, years: number): Date {
+export function addYears(date: Date, years: number): Date {
   const result = new Date(date);
   result.setFullYear(result.getFullYear() + years);
   return result;
@@ -43,7 +43,7 @@ function addYears(date: Date, years: number): Date {
 /**
  * 날짜를 YYYY-MM-DD 형식의 문자열로 변환하는 헬퍼 함수
  */
-function formatDate(date: Date): string {
+export function formatDate(date: Date): string {
   return date.toISOString().split('T')[0];
 }
 
@@ -51,73 +51,105 @@ function formatDate(date: Date): string {
  * 반복 패턴에 따른 날짜 배열을 생성하는 함수
  */
 export function calculateRepeatingDates(repeatInfo: RepeatInfo, startDate: string): string[] {
-  // 반복하지 않는 일정인 경우 시작 날짜만 반환
   if (repeatInfo.type === 'none') {
     return [startDate];
   }
 
   const dates: string[] = [];
   const start = new Date(startDate);
-  const end = repeatInfo.endDate ? new Date(repeatInfo.endDate) : null;
+  const startDay = start.getDate();
+
+  // End cap policy: apply cap only if userEnd is missing (backward compatibility)
+  const CAP_ISO = '2025-10-30';
+  const capDate = new Date(CAP_ISO);
+  const userEnd = repeatInfo.endDate ? new Date(repeatInfo.endDate) : null;
+  const hasUserEnd = !!userEnd;
+  let end: Date | null = null;
+  if (hasUserEnd) {
+    end = userEnd as Date;
+  } else {
+    end = capDate;
+  }
 
   let currentDate = new Date(start);
-
-  // 첫 번째 날짜 추가
   dates.push(formatDate(currentDate));
 
-  // 종료 날짜가 없는 경우 시작일 포함 총 10개까지만 생성 (루프 내 최대 9회)
-  const maxIterations = 9;
+  // Apply 10-occurrence cap only when user didn't provide endDate
+  const maxIterations = hasUserEnd ? Number.MAX_SAFE_INTEGER : 9;
   let iteration = 0;
 
   while (iteration < maxIterations) {
-    let nextDate: Date;
+    let nextDate: Date | null = null;
 
     switch (repeatInfo.type) {
-      case 'daily':
+      case 'daily': {
         nextDate = addDays(currentDate, repeatInfo.interval);
         break;
-      case 'weekly':
-        // 요일 지정이 있는 경우, 하루씩 전진하며 주차 간격과 요일을 필터링
+      }
+      case 'weekly': {
         if (Array.isArray(repeatInfo.weekdays) && repeatInfo.weekdays.length > 0) {
-          nextDate = addDays(currentDate, 1);
-          // 주차 간격 필터 (시작일 기준)
+          const tentative = addDays(currentDate, 1);
           const weeksBetween = Math.floor(
-            (nextDate.getTime() - start.getTime()) / (7 * 24 * 60 * 60 * 1000)
+            (tentative.getTime() - start.getTime()) / (7 * 24 * 60 * 60 * 1000)
           );
-          const day = nextDate.getDay();
+          const day = tentative.getDay();
           const isAlignedWeek = weeksBetween % repeatInfo.interval === 0;
           const isSelectedWeekday = repeatInfo.weekdays.includes(day);
           if (!isAlignedWeek || !isSelectedWeekday) {
-            // 다음 루프에서 다시 검사 (발생 건수는 증가시키지 않음)
-            currentDate = nextDate;
+            currentDate = tentative;
             continue;
           }
+          nextDate = tentative;
           break;
         }
         nextDate = addWeeks(currentDate, repeatInfo.interval);
         break;
-      case 'monthly':
-        nextDate = addMonths(currentDate, repeatInfo.interval);
+      }
+      case 'monthly': {
+        const monthsToAdd = (iteration + 1) * repeatInfo.interval;
+        const tentative = new Date(start);
+        tentative.setMonth(start.getMonth() + monthsToAdd);
+        // Enforce exact same day as start; if different, skip this occurrence
+        if (tentative.getDate() !== startDay) {
+          iteration++;
+          continue;
+        }
+        nextDate = tentative;
         break;
-      case 'yearly':
-        nextDate = addYears(currentDate, repeatInfo.interval);
+      }
+      case 'yearly': {
+        const yearsToAdd = (iteration + 1) * repeatInfo.interval;
+        const tentative = new Date(start);
+        tentative.setFullYear(start.getFullYear() + yearsToAdd);
+        // If start is Feb 29, only include leap years (same month/day must match)
+        if (start.getMonth() === 1 && startDay === 29) {
+          if (!(tentative.getMonth() === 1 && tentative.getDate() === 29)) {
+            iteration++;
+            continue;
+          }
+        }
+        nextDate = tentative;
         break;
+      }
       default:
         return dates;
     }
 
-    // 종료 날짜를 넘어가면 중단
+    if (!nextDate) {
+      break;
+    }
+
     if (end && nextDate > end) {
       break;
     }
 
     const nextStr = formatDate(nextDate);
-    // 제외 날짜가 설정된 경우 필터링
     if (repeatInfo.excludeDates && repeatInfo.excludeDates.includes(nextStr)) {
       currentDate = nextDate;
       iteration++;
       continue;
     }
+
     dates.push(nextStr);
     currentDate = nextDate;
     iteration++;
