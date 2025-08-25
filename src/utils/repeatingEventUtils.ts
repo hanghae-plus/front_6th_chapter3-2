@@ -65,8 +65,8 @@ export function calculateRepeatingDates(repeatInfo: RepeatInfo, startDate: strin
   // 첫 번째 날짜 추가
   dates.push(formatDate(currentDate));
 
-  // 종료 날짜가 없는 경우 최대 10회까지만 반복
-  const maxIterations = 10;
+  // 종료 날짜가 없는 경우 시작일 포함 총 10개까지만 생성 (루프 내 최대 9회)
+  const maxIterations = 9;
   let iteration = 0;
 
   while (iteration < maxIterations) {
@@ -88,9 +88,8 @@ export function calculateRepeatingDates(repeatInfo: RepeatInfo, startDate: strin
           const isAlignedWeek = weeksBetween % repeatInfo.interval === 0;
           const isSelectedWeekday = repeatInfo.weekdays.includes(day);
           if (!isAlignedWeek || !isSelectedWeekday) {
-            // 다음 루프에서 다시 검사
+            // 다음 루프에서 다시 검사 (발생 건수는 증가시키지 않음)
             currentDate = nextDate;
-            iteration++;
             continue;
           }
           break;
