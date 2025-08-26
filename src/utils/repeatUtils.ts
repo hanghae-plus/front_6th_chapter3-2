@@ -9,7 +9,7 @@ export const toSingleEvent = (event: Event | EventForm): Event | EventForm => ({
 // 반복 시작 날짜가 반복 종료 날짜보다 앞인지 확인
 export const checkEndDateValid = (start: string, end?: string): boolean => {
   const repeatStart = new Date(start);
-  const repeatEnd = new Date(end ?? '2025-10-30');
+  const repeatEnd = end ? new Date(end) : new Date('2025-10-30');
   return repeatStart <= repeatEnd;
 };
 
@@ -19,7 +19,7 @@ export const getDailyRepeatEvents = (event: EventForm): EventForm[] => {
   const results: EventForm[] = [];
 
   let current = new Date(date);
-  const endDate = repeat.endDate ? new Date(repeat.endDate) : new Date(2025, 10, 30);
+  const endDate = repeat.endDate ? new Date(repeat.endDate) : new Date('2025-10-30');
 
   while (current <= endDate) {
     results.push({ ...event, date: current.toISOString().slice(0, 10) }); // YYYY-MM-DD
@@ -111,7 +111,7 @@ export const getYearlyRepeatEvents = (event: EventForm): EventForm[] => {
 };
 
 export const getRepeatEventList = (event: EventForm): EventForm[] => {
-  if (!event.repeat.endDate || event.repeat.type === 'none') return [event];
+  if (event.repeat.type === 'none') return [event];
 
   switch (event.repeat.type) {
     case 'daily':

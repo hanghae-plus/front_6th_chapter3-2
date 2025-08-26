@@ -366,7 +366,7 @@ describe('반복 기능', () => {
     expect(repeatSelect).toHaveTextContent('매주');
   });
 
-  it('생성한 반복 일정이 반복 유형에 맞게 표시된다', async () => {
+  it('생성한 반복 일정이 반복 설정에 맞게 표시된다', async () => {
     setupMockHandlerListCreation();
     const { user } = setup(<App />);
 

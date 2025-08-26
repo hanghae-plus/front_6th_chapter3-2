@@ -98,8 +98,9 @@ function App() {
     editEvent,
   } = useEventForm();
 
-  const { events, saveEvent, saveEventList, deleteEvent } = useEventOperations(Boolean(editingEvent), () =>
-    setEditingEvent(null)
+  const { events, saveEvent, saveEventList, deleteEvent } = useEventOperations(
+    Boolean(editingEvent),
+    () => setEditingEvent(null)
   );
 
   const { notifications, notifiedEvents, setNotifications } = useNotifications(events);
