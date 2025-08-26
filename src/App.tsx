@@ -49,8 +49,9 @@ import {
   getWeekDates,
   getWeeksAtMonth,
 } from './utils/dateUtils';
-import { findOverlappingEvents } from './utils/eventOverlap';
+import { findOverlappingEvents, findOverlappingRepeatEvents } from './utils/eventOverlap';
 import { getTimeErrorMessage } from './utils/timeValidation';
+import { getRepeatEventList } from './utils/repeatUtils.ts';
 
 const categories = ['업무', '개인', '가족', '기타'];
 
@@ -112,6 +113,23 @@ function App() {
 
   const { enqueueSnackbar } = useSnackbar();
 
+  const eventData: Event | EventForm = {
+    id: editingEvent ? editingEvent.id : undefined,
+    title,
+    date,
+    startTime,
+    endTime,
+    description,
+    location,
+    category,
+    repeat: {
+      type: isRepeating ? repeatType : 'none',
+      interval: repeatInterval,
+      endDate: repeatEndDate || undefined,
+    },
+    notificationTime,
+  };
+
   const addOrUpdateEvent = async () => {
     if (!title || !date || !startTime || !endTime) {
       enqueueSnackbar('필수 정보를 모두 입력해주세요.', { variant: 'error' });
@@ -123,24 +141,12 @@ function App() {
       return;
     }
 
-    const eventData: Event | EventForm = {
-      id: editingEvent ? editingEvent.id : undefined,
-      title,
-      date,
-      startTime,
-      endTime,
-      description,
-      location,
-      category,
-      repeat: {
-        type: isRepeating ? repeatType : 'none',
-        interval: repeatInterval,
-        endDate: repeatEndDate || undefined,
-      },
-      notificationTime,
-    };
-
-    const overlapping = findOverlappingEvents(eventData, events);
+    // 반복 타입에 따라 겹치는 이벤트 배열 가져옴
+    const overlapping =
+      eventData.repeat.type !== 'none'
+        ? findOverlappingRepeatEvents(getRepeatEventList(eventData), events)
+        : findOverlappingEvents(eventData, events);
+        
     if (overlapping.length > 0) {
       setOverlappingEvents(overlapping);
       setIsOverlapDialogOpen(true);
@@ -635,22 +641,11 @@ function App() {
             color="error"
             onClick={() => {
               setIsOverlapDialogOpen(false);
-              saveEvent({
-                id: editingEvent ? editingEvent.id : undefined,
-                title,
-                date,
-                startTime,
-                endTime,
-                description,
-                location,
-                category,
-                repeat: {
-                  type: isRepeating ? repeatType : 'none',
-                  interval: repeatInterval,
-                  endDate: repeatEndDate || undefined,
-                },
-                notificationTime,
-              });
+              if (eventData.repeat.type !== 'none') {
+                saveEventList(eventData);
+              } else {
+                saveEvent(eventData);
+              }
             }}
           >
             계속 진행

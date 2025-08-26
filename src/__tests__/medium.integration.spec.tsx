@@ -74,8 +74,6 @@ describe('일정 CRUD 및 기본 기능', () => {
       category: '업무',
     });
 
-    debug();
-
     const eventList = within(screen.getByTestId('event-list'));
     expect(eventList.getByText('새 회의')).toBeInTheDocument();
     expect(eventList.getByText('2025-10-15')).toBeInTheDocument();
@@ -466,4 +464,50 @@ describe('반복 기능', () => {
     // 정기 회의 일정이 하나만 남아있는지 확인
     expect(await eventList.findAllByText('정기 회의')).toHaveLength(1);
   });
+
+  it('반복 생성된 일정이 기존 일정과 충돌되면 경고가 노출된다 ', async () => {
+    setupMockHandlerListCreation([
+      {
+        id: '1',
+        title: '기존 회의',
+        date: '2025-10-15',
+        startTime: '09:00',
+        endTime: '10:00',
+        description: '기존 팀 미팅',
+        location: '회의실 B',
+        category: '업무',
+        repeat: { type: 'none', interval: 0 },
+        notificationTime: 10,
+      },
+    ]);
+
+    const { user } = setup(<App />);
+    await user.click(screen.getAllByText('일정 추가')[0]);
+
+    await user.type(screen.getByLabelText('제목'), '정기 회의');
+    await user.type(screen.getByLabelText('날짜'), '2025-10-14');
+    await user.type(screen.getByLabelText('시작 시간'), '09:00');
+    await user.type(screen.getByLabelText('종료 시간'), '10:00');
+    await user.type(screen.getByLabelText('설명'), '정기 팀 미팅');
+    await user.type(screen.getByLabelText('위치'), '회의실 A');
+    await user.click(screen.getByLabelText('카테고리'));
+    await user.click(within(screen.getByLabelText('카테고리')).getByRole('combobox'));
+    await user.click(screen.getByRole('option', { name: `업무-option` }));
+
+    // 반복 유형 선택 - 매일
+    await user.click(within(screen.getByLabelText('반복 유형 선택')).getByRole('combobox'));
+    await user.click(screen.getByRole('option', { name: 'daily-option' }));
+
+    // 반복 종료일 선택
+    await user.type(screen.getByLabelText('반복 종료일'), '2025-10-15');
+
+    // 일정 추가
+    await user.click(screen.getByTestId('event-submit-button'));
+
+    debug();
+
+    expect(screen.getByText('일정 겹침 경고')).toBeInTheDocument();
+    expect(screen.getByText(/다음 일정과 겹칩니다/)).toBeInTheDocument();
+    expect(screen.getByText('기존 회의 (2025-10-15 09:00-10:00)')).toBeInTheDocument();
+  }, 30000);
 });

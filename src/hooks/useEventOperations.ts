@@ -103,8 +103,6 @@ export const useEventOperations = (editing: boolean, onSave?: () => void) => {
     }
   };
 
-  const deleteEventList = async (_ids: string[]) => {};
-
   // -----------------------------------------------------------------
 
   async function init() {
@@ -117,5 +115,5 @@ export const useEventOperations = (editing: boolean, onSave?: () => void) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { events, fetchEvents, saveEvent, deleteEvent, saveEventList, deleteEventList };
+  return { events, fetchEvents, saveEvent, deleteEvent, saveEventList };
 };
