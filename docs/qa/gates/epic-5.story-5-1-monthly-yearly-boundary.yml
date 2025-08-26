@@ -1,0 +1,14 @@
+story: "Story 5.1: 월/연 반복 경계 규칙 준수"
+id: story-5-1-monthly-yearly-boundary
+decision: PASS
+date: "2025-08-26"
+rationale:
+  - 월 31일 시작 시 31일 없는 달 미생성 검증 완료 (단위/회귀 테스트)
+  - 연 2/29 시작 시 비윤년 미생성 검증 완료 (단위/회귀 테스트)
+  - 주/일 반복 및 UI 표시 기존 동작 회귀 이상 없음
+risks:
+  - 타임존 차이에 따른 day 비교 오프셋 가능성
+references:
+  - docs/stories/story-5-1-monthly-yearly-boundary-rules.md
+  - src/__tests__/utils/repeatingEventUtils.spec.ts
+  - src/__tests__/regression/story-5-1.regression.spec.ts

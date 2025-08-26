@@ -186,6 +186,10 @@ function App() {
         setEditingEvent(null);
         resetForm();
       } else {
+        // 편집 + 이 일정만 수정: 단일화 처리하여 저장
+        if (editingEvent && updateScope === 'single' && editingEvent.repeat.type !== 'none') {
+          (eventData as Event).repeat = { type: 'none', interval: 1 } as Event['repeat'];
+        }
         await saveEvent(eventData);
         resetForm();
       }

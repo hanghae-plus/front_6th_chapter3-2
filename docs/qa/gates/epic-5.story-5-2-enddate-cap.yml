@@ -1,0 +1,14 @@
+story: "Story 5.2: 반복 종료 상한(End Date Cap) 정책 적용"
+id: story-5-2-enddate-cap
+decision: PASS
+date: "2025-08-26"
+rationale:
+  - 종료일 미지정 시 2025-10-30 상한 적용 및 최대 10회 제한 검증 완료
+  - 종료일 지정 시 상한/10회 제한 미적용 검증 완료
+  - 기존 연/월/주/일 반복 동작 회귀 양호
+risks:
+  - 상한 상수의 구성 가능성(환경/설정 분리 필요) 향후 고려
+references:
+  - docs/stories/story-5-2-enddate-cap-policy.md
+  - src/__tests__/utils/repeatingEventUtils.spec.ts
+  - src/__tests__/regression/story-5-2.regression.spec.ts
