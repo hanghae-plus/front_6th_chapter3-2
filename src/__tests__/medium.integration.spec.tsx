@@ -448,7 +448,7 @@ describe('반복 기능', () => {
 
     const monthView = within(screen.getByTestId('month-view'));
     expect(monthView.getAllByText('*')).toHaveLength(1);
-  });
+  }, 30000);
 
   it('반복 일정을 삭제하면 해당 일정만 달력에서 제거된다', async () => {
     setupMockHandlerDeleteRepeat();

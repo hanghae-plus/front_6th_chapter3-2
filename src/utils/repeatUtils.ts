@@ -6,13 +6,20 @@ export const toSingleEvent = (event: Event | EventForm): Event | EventForm => ({
   repeat: { type: 'none', interval: 0 },
 });
 
+// 반복 시작 날짜가 반복 종료 날짜보다 앞인지 확인
+export const checkEndDateValid = (start: string, end?: string): boolean => {
+  const repeatStart = new Date(start);
+  const repeatEnd = new Date(end ?? '2025-10-30');
+  return repeatStart <= repeatEnd;
+};
+
 // 매일 반복 일정 배열
 export const getDailyRepeatEvents = (event: EventForm): EventForm[] => {
   const { date, repeat } = event;
   const results: EventForm[] = [];
 
   let current = new Date(date);
-  const endDate = new Date(repeat.endDate!);
+  const endDate = repeat.endDate ? new Date(repeat.endDate) : new Date(2025, 10, 30);
 
   while (current <= endDate) {
     results.push({ ...event, date: current.toISOString().slice(0, 10) }); // YYYY-MM-DD
@@ -27,7 +34,7 @@ export const getWeeklyRepeatEvents = (event: EventForm): EventForm[] => {
   const results: EventForm[] = [];
 
   let current = new Date(date);
-  const endDate = new Date(repeat.endDate!);
+  const endDate = repeat.endDate ? new Date(repeat.endDate) : new Date('2025-10-30');
 
   while (current <= endDate) {
     results.push({ ...event, date: current.toISOString().slice(0, 10) });
@@ -42,7 +49,7 @@ export const getMonthlyRepeatEvents = (event: EventForm): EventForm[] => {
   const results: EventForm[] = [];
 
   let current = new Date(date);
-  const endDate = new Date(repeat.endDate!);
+  const endDate = repeat.endDate ? new Date(repeat.endDate) : new Date('2025-10-30');
   const day = current.getDate();
   const interval = repeat.interval;
 
@@ -81,7 +88,8 @@ export const getYearlyRepeatEvents = (event: EventForm): EventForm[] => {
   const results: EventForm[] = [];
 
   let current = new Date(date);
-  const endDate = new Date(repeat.endDate!);
+  const endDate = repeat.endDate ? new Date(repeat.endDate) : new Date('2025-10-30');
+
   const month = current.getMonth();
   const day = current.getDate();
 

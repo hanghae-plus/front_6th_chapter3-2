@@ -98,7 +98,7 @@ function App() {
     editEvent,
   } = useEventForm();
 
-  const { events, saveEvent, deleteEvent } = useEventOperations(Boolean(editingEvent), () =>
+  const { events, saveEvent, saveEventList, deleteEvent } = useEventOperations(Boolean(editingEvent), () =>
     setEditingEvent(null)
   );
 
@@ -144,7 +144,11 @@ function App() {
       setOverlappingEvents(overlapping);
       setIsOverlapDialogOpen(true);
     } else {
-      await saveEvent(eventData);
+      if (eventData.repeat.type !== 'none') {
+        await saveEventList(eventData);
+      } else {
+        await saveEvent(eventData);
+      }
       resetForm();
     }
   };
@@ -210,6 +214,7 @@ function App() {
                                 noWrap
                                 sx={{ fontSize: '0.75rem', lineHeight: 1.2 }}
                               >
+                                {event.repeat.type !== 'none' && <span>*</span>}
                                 {event.title}
                               </Typography>
                             </Stack>
@@ -297,6 +302,7 @@ function App() {
                                       noWrap
                                       sx={{ fontSize: '0.75rem', lineHeight: 1.2 }}
                                     >
+                                      {event.repeat.type !== 'none' && <span>*</span>}
                                       {event.title}
                                     </Typography>
                                   </Stack>
@@ -448,31 +454,44 @@ function App() {
                 <FormLabel>반복 유형</FormLabel>
                 <Select
                   size="small"
+                  aria-label="반복 유형 선택"
                   value={repeatType}
                   onChange={(e) => setRepeatType(e.target.value as RepeatType)}
                 >
-                  <MenuItem value="daily">매일</MenuItem>
-                  <MenuItem value="weekly">매주</MenuItem>
-                  <MenuItem value="monthly">매월</MenuItem>
-                  <MenuItem value="yearly">매년</MenuItem>
+                  <MenuItem value="daily" aria-label="daily-option">
+                    매일
+                  </MenuItem>
+                  <MenuItem value="weekly" aria-label="weekly-option">
+                    매주
+                  </MenuItem>
+                  <MenuItem value="monthly" aria-label="monthly-option">
+                    매월
+                  </MenuItem>
+                  <MenuItem value="yearly" aria-label="yearly-option">
+                    매년
+                  </MenuItem>
                 </Select>
               </FormControl>
               <Stack direction="row" spacing={2}>
                 <FormControl fullWidth>
-                  <FormLabel>반복 간격</FormLabel>
+                  <FormLabel htmlFor="repeat-interval">반복 간격</FormLabel>
                   <TextField
+                    id="repeat-interval"
                     size="small"
                     type="number"
+                    aria-label="반복 간격 선택"
                     value={repeatInterval}
                     onChange={(e) => setRepeatInterval(Number(e.target.value))}
                     slotProps={{ htmlInput: { min: 1 } }}
                   />
                 </FormControl>
                 <FormControl fullWidth>
-                  <FormLabel>반복 종료일</FormLabel>
+                  <FormLabel htmlFor="repeat-end">반복 종료일</FormLabel>
                   <TextField
+                    id="repeat-end"
                     size="small"
                     type="date"
+                    aria-label="반복 종료일 선택"
                     value={repeatEndDate}
                     onChange={(e) => setRepeatEndDate(e.target.value)}
                   />
@@ -550,6 +569,7 @@ function App() {
                         fontWeight={notifiedEvents.includes(event.id) ? 'bold' : 'normal'}
                         color={notifiedEvents.includes(event.id) ? 'error' : 'inherit'}
                       >
+                        {event.repeat.type !== 'none' && <span>*</span>}
                         {event.title}
                       </Typography>
                     </Stack>
