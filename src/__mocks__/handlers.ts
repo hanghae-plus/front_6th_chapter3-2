@@ -36,4 +36,54 @@ export const handlers = [
 
     return new HttpResponse(null, { status: 404 });
   }),
+
+  http.post('/api/events-list', async ({ request }) => {
+    const { events: newEventsList } = (await request.json()) as { events: Event[] };
+    const repeatId = 'mock-repeat-id';
+
+    const createdEvents = newEventsList.map((event) => {
+      const isRepeatEvent = event.repeat.type !== 'none';
+      return {
+        ...event,
+        id: String(events.length + Math.random()),
+        repeat: {
+          ...event.repeat,
+          id: isRepeatEvent ? repeatId : undefined,
+        },
+      };
+    });
+
+    return HttpResponse.json(createdEvents, { status: 201 });
+  }),
+
+  http.put('/api/events-list', async ({ request }) => {
+    const { events: updatedEventsList } = (await request.json()) as { events: Event[] };
+    let isUpdated = false;
+
+    const updatedEvents = events.map((event) => {
+      const updateEvent = updatedEventsList.find((e) => e.id === event.id);
+      if (updateEvent) {
+        isUpdated = true;
+        return { ...event, ...updateEvent };
+      }
+      return event;
+    });
+
+    if (isUpdated) {
+      return HttpResponse.json(updatedEvents);
+    }
+
+    return new HttpResponse(null, { status: 404 });
+  }),
+
+  http.delete('/api/events-list', async ({ request }) => {
+    const { eventIds } = (await request.json()) as { eventIds: string[] };
+    const remainingEvents = events.filter((event) => !eventIds.includes(event.id));
+
+    if (remainingEvents.length < events.length) {
+      return new HttpResponse(null, { status: 204 });
+    }
+
+    return new HttpResponse(null, { status: 404 });
+  }),
 ];

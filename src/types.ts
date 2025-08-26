@@ -4,6 +4,10 @@ export interface RepeatInfo {
   type: RepeatType;
   interval: number;
   endDate?: string;
+  version?: number;
+  excludeDates?: string[];
+  weekdays?: number[]; // 0(Sun) - 6(Sat)
+  id?: string;
 }
 
 export interface EventForm {

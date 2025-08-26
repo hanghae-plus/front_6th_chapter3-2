@@ -1,0 +1,58 @@
+# Quality Gate Decision
+schema: 1
+story: "7.2"
+story_title: "상태 축소와 computed UI"
+gate: "CONCERNS"
+status_reason: "Good progress on computed values but state reduction target not fully achieved yet"
+reviewer: "Quinn (Test Architect)"
+updated: "2024-01-24T10:30:00Z"
+
+waiver: { active: false }
+
+top_issues:
+  - id: "STATE-001"
+    severity: medium
+    finding: "App.tsx still has 4 local states that could be consolidated (selectionMode, selectedIds, updateScope, deleteScope)"
+    suggested_action: "Combine selection-related states into single object to achieve 30%+ reduction target"
+  - id: "PERF-001"
+    severity: medium
+    finding: "Performance measurement (render count) not performed as required by AC"
+    suggested_action: "Use React Profiler to measure render count improvement across 3 scenarios"
+  - id: "REPEAT-001"
+    severity: low
+    finding: "Repeat preview logic not yet converted to computed values"
+    suggested_action: "Convert repeat preview calculations to useMemo"
+
+risk_summary:
+  totals: { critical: 0, high: 0, medium: 2, low: 1 }
+  recommendations:
+    must_fix: []
+    monitor: ["State consolidation progress", "Performance measurement"]
+
+evidence:
+  tests_reviewed: 0
+  risks_identified: 3
+  trace:
+    ac_covered: [1, 2]
+    ac_gaps: [3, 4, 5]
+
+nfr_validation:
+  security: { status: "PASS", notes: "No security implications from state management changes" }
+  performance: { status: "CONCERNS", notes: "Performance improvement not yet measured" }
+  reliability: { status: "PASS", notes: "State changes maintain reliability" }
+  maintainability: { status: "PASS", notes: "Hook separation improves maintainability" }
+
+quality_score: 70
+expires: "2024-02-07T00:00:00Z"
+
+recommendations:
+  immediate:
+    - action: "Consolidate 4 selection states into single object"
+      refs: ["src/App.tsx:83-86"]
+    - action: "Perform React Profiler measurement for render count"
+      refs: ["src/App.tsx"]
+  future:
+    - action: "Move constants outside component to prevent re-creation"
+      refs: ["src/App.tsx:23-33"]
+    - action: "Convert repeat preview logic to computed values"
+      refs: ["src/components/EventFormPanel.tsx"]

@@ -1,0 +1,14 @@
+story: "Story 3.3: 반복 일정 일괄 삭제 기능 구현"
+id: story-3-3-bulk-delete
+decision: PASS
+date: "2025-08-25"
+rationale:
+  - 삭제 범위 선택 UI 및 확인 다이얼로그 흐름 회귀 테스트로 검증
+  - DELETE /api/events-list 일괄 삭제 동작 서버/목/통합 테스트로 확인
+risks:
+  - 다량 삭제 시 성능/Undo 흐름 고려 필요
+references:
+  - src/__tests__/regression/story-3-3-ui.regression.spec.tsx
+  - src/__tests__/integration/bulk-events.integration.spec.ts
+  - src/__mocks__/handlersUtils.ts
+  - server.js

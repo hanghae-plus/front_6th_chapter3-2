@@ -5,10 +5,7 @@ export function parseDateTime(date: string, time: string) {
 }
 
 export function convertEventToDateRange({ date, startTime, endTime }: Event | EventForm) {
-  return {
-    start: parseDateTime(date, startTime),
-    end: parseDateTime(date, endTime),
-  };
+  return { start: parseDateTime(date, startTime), end: parseDateTime(date, endTime) };
 }
 
 export function isOverlapping(event1: Event | EventForm, event2: Event | EventForm) {

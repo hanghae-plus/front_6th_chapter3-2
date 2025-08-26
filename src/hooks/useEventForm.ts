@@ -1,6 +1,9 @@
 import { ChangeEvent, useState } from 'react';
 
 import { Event, RepeatType } from '../types';
+import { createEventsImpl, type FormSnapshot } from './useEventForm.helpers';
+import { saveEvents, showSuccessMessage } from '../utils/eventStorage';
+import { validateRepeatSettings, generateEventInstances } from '../utils/repeatingEventUtils';
 import { getTimeErrorMessage } from '../utils/timeValidation';
 
 type TimeErrorRecord = Record<'startTimeError' | 'endTimeError', string | null>;
@@ -17,6 +20,10 @@ export const useEventForm = (initialEvent?: Event) => {
   const [repeatType, setRepeatType] = useState<RepeatType>(initialEvent?.repeat.type || 'none');
   const [repeatInterval, setRepeatInterval] = useState(initialEvent?.repeat.interval || 1);
   const [repeatEndDate, setRepeatEndDate] = useState(initialEvent?.repeat.endDate || '');
+  const [excludeDates, setExcludeDates] = useState<string[]>(
+    initialEvent?.repeat.excludeDates || []
+  );
+  const [weekdays, setWeekdays] = useState<number[]>(initialEvent?.repeat.weekdays || []);
   const [notificationTime, setNotificationTime] = useState(initialEvent?.notificationTime || 10);
 
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
@@ -50,6 +57,8 @@ export const useEventForm = (initialEvent?: Event) => {
     setRepeatType('none');
     setRepeatInterval(1);
     setRepeatEndDate('');
+    setExcludeDates([]);
+    setWeekdays([]);
     setNotificationTime(10);
   };
 
@@ -66,7 +75,36 @@ export const useEventForm = (initialEvent?: Event) => {
     setRepeatType(event.repeat.type);
     setRepeatInterval(event.repeat.interval);
     setRepeatEndDate(event.repeat.endDate || '');
+    setExcludeDates(event.repeat.excludeDates || []);
+    setWeekdays(event.repeat.weekdays || []);
     setNotificationTime(event.notificationTime);
+  };
+
+  const createEvents = async (): Promise<Event[]> => {
+    const snapshot: FormSnapshot = {
+      editingEventId: editingEvent?.id ?? null,
+      title,
+      date,
+      startTime,
+      endTime,
+      description,
+      location,
+      category,
+      isRepeating,
+      repeatType,
+      repeatInterval,
+      repeatEndDate,
+      excludeDates,
+      weekdays,
+      notificationTime,
+    };
+
+    return createEventsImpl(snapshot, {
+      saveEvents,
+      showSuccessMessage,
+      validateRepeatSettings,
+      generateEventInstances,
+    });
   };
 
   return {
@@ -102,5 +140,10 @@ export const useEventForm = (initialEvent?: Event) => {
     handleEndTimeChange,
     resetForm,
     editEvent,
+    excludeDates,
+    setExcludeDates,
+    weekdays,
+    setWeekdays,
+    createEvents,
   };
 };

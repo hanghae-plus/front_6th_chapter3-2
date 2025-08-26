@@ -71,6 +71,43 @@ export default [
 
       // ESLint rules
       'no-unused-vars': 'warn',
+      // 함수 길이/복잡도 경고(개발 시 가이던스) — CI는 스크립트로 error 게이트
+      'max-lines-per-function': ['warn', { max: 20, skipComments: true, skipBlankLines: true }],
+      complexity: ['warn', 6],
+      // 명명 규칙: 전역 기본(컴포넌트/테스트 영향 최소화)
+      '@typescript-eslint/naming-convention': [
+        'warn',
+        {
+          selector: 'function',
+          format: ['camelCase', 'PascalCase'],
+          leadingUnderscore: 'allow',
+        },
+        {
+          selector: 'variableLike',
+          format: ['camelCase', 'UPPER_CASE'],
+          leadingUnderscore: 'allow',
+        },
+        {
+          selector: 'typeLike',
+          format: ['PascalCase'],
+        },
+      ],
+      // 혼용 용어 가이드(경고): 통일된 용어 사용 유도
+      'no-restricted-syntax': [
+        'warn',
+        {
+          selector: 'Identifier[name=/^display[A-Z]/]',
+          message: "UI 동작 명명은 'show*'로 통일하세요.",
+        },
+        {
+          selector: 'Identifier[name=/^load[A-Z]/]',
+          message: "데이터 조회는 'get*' 또는 'fetch*'를 사용하세요.",
+        },
+        {
+          selector: 'Identifier[name=/^write[A-Z]/]',
+          message: "저장은 'save*'를 사용하세요.",
+        },
+      ],
 
       // React rules
       'react/prop-types': 'off',
@@ -144,6 +181,21 @@ export default [
         expect: 'readonly',
         assert: 'readonly',
       },
+    },
+  },
+
+  // Overrides: do not apply 20-line rule to React components
+  {
+    files: [
+      'src/hooks/**/*.ts',
+      'src/components/**/*.tsx',
+      'src/App.tsx',
+      'src/__tests__/**/*.ts',
+      'src/__tests__/**/*.tsx',
+    ],
+    rules: {
+      'max-lines-per-function': 'off',
+      complexity: 'off',
     },
   },
 ];

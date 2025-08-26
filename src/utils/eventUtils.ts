@@ -1,4 +1,4 @@
-import { Event } from '../types';
+import { Event, RepeatType } from '../types';
 import { getWeekDates, isDateInRange } from './dateUtils';
 
 function filterEventsByDateRange(events: Event[], start: Date, end: Date): Event[] {
@@ -13,6 +13,7 @@ function containsTerm(target: string, term: string) {
 }
 
 function searchEvents(events: Event[], term: string) {
+  if (!term) return events;
   return events.filter(
     ({ title, description, location }) =>
       containsTerm(title, term) || containsTerm(description, term) || containsTerm(location, term)
@@ -36,6 +37,25 @@ function filterEventsByDateRangeAtMonth(events: Event[], currentDate: Date) {
     999
   );
   return filterEventsByDateRange(events, monthStart, monthEnd);
+}
+
+export function getRepeatIcon(repeatType: RepeatType): string {
+  switch (repeatType) {
+    case 'daily':
+      return '🔄';
+    case 'weekly':
+      return '📅';
+    case 'monthly':
+      return '📆';
+    case 'yearly':
+      return '🎯';
+    default:
+      return '';
+  }
+}
+
+export function isRepeatingEvent(event: Event): boolean {
+  return event.repeat?.type !== undefined && event.repeat?.type !== 'none';
 }
 
 export function getFilteredEvents(

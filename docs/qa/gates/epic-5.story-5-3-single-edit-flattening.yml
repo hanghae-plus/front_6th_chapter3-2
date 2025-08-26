@@ -1,0 +1,15 @@
+story: "Story 5.3: 단일 수정 시 반복 속성 제거 및 아이콘 제거"
+id: story-5-3-single-edit-flattening
+decision: PASS
+date: "2025-08-26"
+rationale:
+  - 편집 저장 시 updateScope=single에서 repeat를 none으로 단일화 처리 검증
+  - 리스트/캘린더에서 반복 표시(아이콘/텍스트) 제거 확인 (통합/회귀 UI 테스트)
+  - 단일/전체 삭제 플로우 기존 동작 회귀 이상 없음
+risks:
+  - 폼 상태와 저장 시점의 불일치에 따른 단일화 누락 가능성 → 저장 직전 강제 세팅으로 완화
+references:
+  - docs/stories/story-5-3-single-edit-flattening.md
+  - src/App.tsx
+  - src/__tests__/integration/single-edit-flattening.integration.spec.tsx
+  - src/__tests__/regression/story-5-3-ui.regression.spec.tsx

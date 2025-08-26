@@ -92,3 +92,89 @@ export const setupMockHandlerDeletion = () => {
     })
   );
 };
+
+// 이벤트 목록 생성 핸들러
+const createBulkEventsHandler = (mockEvents: Event[]) => {
+  return http.post('/api/events-list', async ({ request }) => {
+    const { events: newEventsList } = (await request.json()) as { events: Event[] };
+    const repeatId = 'mock-repeat-id';
+
+    const createdEvents = newEventsList.map((event) => {
+      const isRepeatEvent = event.repeat.type !== 'none';
+      const newEvent = {
+        ...event,
+        id: String(mockEvents.length + Math.random()),
+        repeat: {
+          ...event.repeat,
+          id: isRepeatEvent ? repeatId : undefined,
+        },
+      };
+      mockEvents.push(newEvent);
+      return newEvent;
+    });
+
+    return HttpResponse.json(createdEvents, { status: 201 });
+  });
+};
+
+// 이벤트 목록 업데이트 핸들러
+const updateBulkEventsHandler = (mockEvents: Event[]) => {
+  return http.put('/api/events-list', async ({ request }) => {
+    const { events: updatedEventsList } = (await request.json()) as { events: Event[] };
+    let isUpdated = false;
+
+    updatedEventsList.forEach((updateEvent) => {
+      const index = mockEvents.findIndex((event) => event.id === updateEvent.id);
+      if (index !== -1) {
+        isUpdated = true;
+        mockEvents[index] = { ...mockEvents[index], ...updateEvent };
+      }
+    });
+
+    if (isUpdated) {
+      return HttpResponse.json(mockEvents);
+    }
+
+    return new HttpResponse(null, { status: 404 });
+  });
+};
+
+// 이벤트 목록 삭제 핸들러
+const deleteBulkEventsHandler = (mockEvents: Event[]) => {
+  return http.delete('/api/events-list', async ({ request }) => {
+    const { eventIds } = (await request.json()) as { eventIds: string[] };
+    const initialLength = mockEvents.length;
+
+    eventIds.forEach((id) => {
+      const index = mockEvents.findIndex((event) => event.id === id);
+      if (index !== -1) {
+        mockEvents.splice(index, 1);
+      }
+    });
+
+    if (mockEvents.length < initialLength) {
+      return new HttpResponse(null, { status: 204 });
+    }
+
+    return new HttpResponse(null, { status: 404 });
+  });
+};
+
+// 이벤트 목록 조회 핸들러
+const getEventsHandler = (mockEvents: Event[]) => {
+  return http.get('/api/events', () => {
+    return HttpResponse.json({ events: mockEvents });
+  });
+};
+
+// 일괄 작업을 위한 모든 핸들러 설정
+export const setupMockHandlerBulkOperations = (initEvents = [] as Event[]) => {
+  const mockEvents: Event[] = [...initEvents];
+
+  server.use(
+    getEventsHandler(mockEvents),
+    createBulkEventsHandler(mockEvents),
+    updateBulkEventsHandler(mockEvents),
+    deleteBulkEventsHandler(mockEvents)
+  );
+};

@@ -11,16 +11,26 @@ export function getDaysInMonth(year: number, month: number): number {
  * 주어진 날짜가 속한 주의 모든 날짜를 반환합니다.
  */
 export function getWeekDates(date: Date): Date[] {
-  const day = date.getDay();
-  const diff = date.getDate() - day;
-  const sunday = new Date(date.setDate(diff));
-  const weekDates = [];
+  const startOfWeek = getSunday(date);
+  return buildWeekFrom(startOfWeek);
+}
+
+function getSunday(date: Date): Date {
+  const result = new Date(date);
+  result.setHours(0, 0, 0, 0);
+  const day = result.getDay();
+  result.setDate(result.getDate() - day);
+  return result;
+}
+
+function buildWeekFrom(sunday: Date): Date[] {
+  const dates: Date[] = [];
   for (let i = 0; i < 7; i++) {
     const nextDate = new Date(sunday);
     nextDate.setDate(sunday.getDate() + i);
-    weekDates.push(nextDate);
+    dates.push(nextDate);
   }
-  return weekDates;
+  return dates;
 }
 
 export function getWeeksAtMonth(currentDate: Date) {
@@ -56,23 +66,26 @@ export function getEventsForDay(events: Event[], date: number): Event[] {
 }
 
 export function formatWeek(targetDate: Date) {
-  const dayOfWeek = targetDate.getDay();
-  const diffToThursday = 4 - dayOfWeek;
-  const thursday = new Date(targetDate);
-  thursday.setDate(targetDate.getDate() + diffToThursday);
-
+  const thursday = getThursday(targetDate);
   const year = thursday.getFullYear();
   const month = thursday.getMonth() + 1;
+  const weekNumber = getWeekNumber(thursday);
+  return `${year}년 ${month}월 ${weekNumber}주`;
+}
 
+function getThursday(date: Date): Date {
+  const dayOfWeek = date.getDay();
+  const diffToThursday = 4 - dayOfWeek;
+  const thursday = new Date(date);
+  thursday.setDate(date.getDate() + diffToThursday);
+  return thursday;
+}
+
+function getWeekNumber(thursday: Date): number {
   const firstDayOfMonth = new Date(thursday.getFullYear(), thursday.getMonth(), 1);
-
   const firstThursday = new Date(firstDayOfMonth);
   firstThursday.setDate(1 + ((4 - firstDayOfMonth.getDay() + 7) % 7));
-
-  const weekNumber: number =
-    Math.floor((thursday.getTime() - firstThursday.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1;
-
-  return `${year}년 ${month}월 ${weekNumber}주`;
+  return Math.floor((thursday.getTime() - firstThursday.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1;
 }
 
 /**

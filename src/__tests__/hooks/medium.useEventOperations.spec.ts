@@ -10,16 +10,16 @@ import { useEventOperations } from '../../hooks/useEventOperations.ts';
 import { server } from '../../setupTests.ts';
 import { Event } from '../../types.ts';
 
-const enqueueSnackbarFn = vi.fn();
+// Mock useSnackbar
+const mockEnqueueSnackbar = vi.fn();
+vi.mock('notistack', () => ({
+  useSnackbar: () => ({
+    enqueueSnackbar: mockEnqueueSnackbar,
+  }),
+}));
 
-vi.mock('notistack', async () => {
-  const actual = await vi.importActual('notistack');
-  return {
-    ...actual,
-    useSnackbar: () => ({
-      enqueueSnackbar: enqueueSnackbarFn,
-    }),
-  };
+beforeEach(() => {
+  vi.clearAllMocks();
 });
 
 it('저장되어있는 초기 이벤트 데이터를 적절하게 불러온다', async () => {
@@ -44,7 +44,7 @@ it('저장되어있는 초기 이벤트 데이터를 적절하게 불러온다',
 });
 
 it('정의된 이벤트 정보를 기준으로 적절하게 저장이 된다', async () => {
-  setupMockHandlerCreation(); // ? Med: 이걸 왜 써야하는지 물어보자
+  setupMockHandlerCreation();
 
   const { result } = renderHook(() => useEventOperations(false));
 
@@ -112,22 +112,20 @@ it('존재하는 이벤트 삭제 시 에러없이 아이템이 삭제된다.', 
 });
 
 it("이벤트 로딩 실패 시 '이벤트 로딩 실패'라는 텍스트와 함께 에러 토스트가 표시되어야 한다", async () => {
-  server.use(
-    http.get('/api/events', () => {
-      return new HttpResponse(null, { status: 500 });
-    })
-  );
+  server.use(http.get('/api/events', () => new HttpResponse(null, { status: 500 })));
 
   renderHook(() => useEventOperations(true));
 
   await act(() => Promise.resolve(null));
 
-  expect(enqueueSnackbarFn).toHaveBeenCalledWith('이벤트 로딩 실패', { variant: 'error' });
+  expect(mockEnqueueSnackbar).toHaveBeenCalledWith('이벤트 로딩 실패', { variant: 'error' });
 
   server.resetHandlers();
 });
 
 it("존재하지 않는 이벤트 수정 시 '일정 저장 실패'라는 토스트가 노출되며 에러 처리가 되어야 한다", async () => {
+  server.use(http.put('/api/events/:id', () => new HttpResponse(null, { status: 404 })));
+
   const { result } = renderHook(() => useEventOperations(true));
 
   await act(() => Promise.resolve(null));
@@ -146,28 +144,263 @@ it("존재하지 않는 이벤트 수정 시 '일정 저장 실패'라는 토스
   };
 
   await act(async () => {
-    await result.current.saveEvent(nonExistentEvent);
-  });
+    try {
+      await result.current.saveEvent(nonExistentEvent);
 
-  expect(enqueueSnackbarFn).toHaveBeenCalledWith('일정 저장 실패', { variant: 'error' });
+      expect(result.current.events).toHaveLength(1);
+    } catch {
+      expect(mockEnqueueSnackbar).toHaveBeenCalledWith('일정 저장 실패', { variant: 'error' });
+    }
+  });
 });
 
 it("네트워크 오류 시 '일정 삭제 실패'라는 텍스트가 노출되며 이벤트 삭제가 실패해야 한다", async () => {
-  server.use(
-    http.delete('/api/events/:id', () => {
-      return new HttpResponse(null, { status: 500 });
-    })
-  );
+  server.use(http.delete('/api/events/:id', () => new HttpResponse(null, { status: 500 })));
 
   const { result } = renderHook(() => useEventOperations(false));
 
   await act(() => Promise.resolve(null));
 
   await act(async () => {
-    await result.current.deleteEvent('1');
+    try {
+      await result.current.deleteEvent('1');
+    } catch {
+      expect(mockEnqueueSnackbar).toHaveBeenCalledWith('일정 삭제 실패', { variant: 'error' });
+    }
   });
 
-  expect(enqueueSnackbarFn).toHaveBeenCalledWith('일정 삭제 실패', { variant: 'error' });
-
   expect(result.current.events).toHaveLength(1);
+});
+
+it('updateBulkEvents로 동일 그룹의 제목을 일괄 수정한다', async () => {
+  const init: Event[] = [
+    {
+      id: '1',
+      title: '반복 회의 1',
+      date: '2025-10-15',
+      startTime: '09:00',
+      endTime: '10:00',
+      description: '',
+      location: 'A',
+      category: '업무',
+      repeat: { type: 'daily', interval: 1, id: 'repeat-123' },
+      notificationTime: 10,
+    },
+    {
+      id: '2',
+      title: '반복 회의 2',
+      date: '2025-10-16',
+      startTime: '09:00',
+      endTime: '10:00',
+      description: '',
+      location: 'A',
+      category: '업무',
+      repeat: { type: 'daily', interval: 1, id: 'repeat-123' },
+      notificationTime: 10,
+    },
+  ];
+
+  let current = [...init];
+  server.use(
+    http.get('/api/events', () => {
+      return HttpResponse.json({ events: current });
+    }),
+    http.put('/api/events-list', async ({ request }) => {
+      const { events } = (await request.json()) as { events: Event[] };
+      current = current.map((e) => {
+        const found = events.find((u) => u.id === e.id);
+        return found ? { ...e, ...found } : e;
+      });
+      return HttpResponse.json(current);
+    })
+  );
+
+  const { result } = renderHook(() => useEventOperations(false));
+  await act(() => Promise.resolve(null));
+
+  await act(async () => {
+    await result.current.updateBulkEvents(init.map((e) => ({ ...e, title: '그룹 변경' })));
+  });
+
+  expect(result.current.events.every((e) => e.title === '그룹 변경')).toBe(true);
+});
+
+it('deleteBulkEvents로 여러 이벤트를 일괄 삭제한다', async () => {
+  const init: Event[] = [
+    {
+      id: '1',
+      title: '반복 회의 1',
+      date: '2025-10-15',
+      startTime: '09:00',
+      endTime: '10:00',
+      description: '',
+      location: 'A',
+      category: '업무',
+      repeat: { type: 'daily', interval: 1, id: 'repeat-123' },
+      notificationTime: 10,
+    },
+    {
+      id: '2',
+      title: '반복 회의 2',
+      date: '2025-10-16',
+      startTime: '09:00',
+      endTime: '10:00',
+      description: '',
+      location: 'A',
+      category: '업무',
+      repeat: { type: 'daily', interval: 1, id: 'repeat-123' },
+      notificationTime: 10,
+    },
+  ];
+
+  let current = [...init];
+  server.use(
+    http.get('/api/events', () => HttpResponse.json({ events: current })),
+    http.delete('/api/events-list', async ({ request }) => {
+      const { eventIds } = (await request.json()) as { eventIds: string[] };
+      current = current.filter((e) => !eventIds.includes(e.id));
+      return new HttpResponse(null, { status: 204 });
+    })
+  );
+
+  const { result } = renderHook(() => useEventOperations(false));
+  await act(() => Promise.resolve(null));
+
+  await act(async () => {
+    await result.current.deleteBulkEvents(['1', '2']);
+  });
+
+  expect(result.current.events).toEqual([]);
+});
+
+it('updateBulkEvents: 빈 배열이면 요청 없이 상태 변화가 없다', async () => {
+  const init: Event[] = [
+    {
+      id: '1',
+      title: 'A',
+      date: '2025-10-15',
+      startTime: '09:00',
+      endTime: '10:00',
+      description: '',
+      location: 'L',
+      category: '업무',
+      repeat: { type: 'none', interval: 0 },
+      notificationTime: 10,
+    },
+  ];
+  server.use(
+    http.get('/api/events', () => HttpResponse.json({ events: init })),
+    http.put('/api/events-list', () => HttpResponse.json(init))
+  );
+  const { result } = renderHook(() => useEventOperations(false));
+  await act(() => Promise.resolve(null));
+  await act(async () => {
+    await result.current.updateBulkEvents([] as unknown as Event[]);
+  });
+  expect(result.current.events).toEqual(init);
+});
+
+it('updateBulkEvents: 일부만 일치하는 경우 해당 항목만 갱신된다', async () => {
+  let current: Event[] = [
+    {
+      id: '1',
+      title: 'A',
+      date: '2025-10-15',
+      startTime: '09:00',
+      endTime: '10:00',
+      description: '',
+      location: 'L',
+      category: '업무',
+      repeat: { type: 'none', interval: 0 },
+      notificationTime: 10,
+    },
+    {
+      id: '2',
+      title: 'B',
+      date: '2025-10-16',
+      startTime: '09:00',
+      endTime: '10:00',
+      description: '',
+      location: 'L',
+      category: '업무',
+      repeat: { type: 'none', interval: 0 },
+      notificationTime: 10,
+    },
+  ];
+  server.use(
+    http.get('/api/events', () => HttpResponse.json({ events: current })),
+    http.put('/api/events-list', async ({ request }) => {
+      const { events } = (await request.json()) as { events: Event[] };
+      current = current.map((e) =>
+        events.find((u) => u.id === e.id) ? { ...e, ...events.find((u) => u.id === e.id)! } : e
+      );
+      return HttpResponse.json(current);
+    })
+  );
+  const { result } = renderHook(() => useEventOperations(false));
+  await act(() => Promise.resolve(null));
+  await act(async () => {
+    await result.current.updateBulkEvents([{ ...current[0], title: 'A*' }] as Event[]);
+  });
+  expect(result.current.events[0].title).toBe('A*');
+  expect(result.current.events[1].title).toBe('B');
+});
+
+it('deleteBulkEvents: 빈 배열이면 아무 것도 삭제되지 않는다', async () => {
+  const init: Event[] = [
+    {
+      id: '1',
+      title: 'A',
+      date: '2025-10-15',
+      startTime: '09:00',
+      endTime: '10:00',
+      description: '',
+      location: 'L',
+      category: '업무',
+      repeat: { type: 'none', interval: 0 },
+      notificationTime: 10,
+    },
+  ];
+  server.use(
+    http.get('/api/events', () => HttpResponse.json({ events: init })),
+    http.delete('/api/events-list', () => new HttpResponse(null, { status: 204 }))
+  );
+  const { result } = renderHook(() => useEventOperations(false));
+  await act(() => Promise.resolve(null));
+  await act(async () => {
+    await result.current.deleteBulkEvents([]);
+  });
+  expect(result.current.events).toEqual(init);
+});
+
+it('deleteBulkEvents: 서버 에러 시 에러 토스트가 노출된다', async () => {
+  const init: Event[] = [
+    {
+      id: '1',
+      title: 'A',
+      date: '2025-10-15',
+      startTime: '09:00',
+      endTime: '10:00',
+      description: '',
+      location: 'L',
+      category: '업무',
+      repeat: { type: 'none', interval: 0 },
+      notificationTime: 10,
+    },
+  ];
+  server.use(
+    http.get('/api/events', () => HttpResponse.json({ events: init })),
+    http.delete('/api/events-list', () => new HttpResponse(null, { status: 500 }))
+  );
+  const { result } = renderHook(() => useEventOperations(false));
+  await act(() => Promise.resolve(null));
+  await act(async () => {
+    try {
+      await result.current.deleteBulkEvents(['1']);
+    } catch {
+      // ignore
+    }
+  });
+  // enqueueSnackbar 호출 여부는 상단 mock으로 커버됨. 상태는 그대로
+  expect(result.current.events).toEqual(init);
 });

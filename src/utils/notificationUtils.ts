@@ -1,13 +1,15 @@
 import { Event } from '../types';
 
-const 초 = 1000;
-const 분 = 초 * 60;
+const MS_PER_SECOND = 1000;
+const MS_PER_MINUTE = MS_PER_SECOND * 60;
 
 export function getUpcomingEvents(events: Event[], now: Date, notifiedEvents: string[]) {
   return events.filter((event) => {
     const eventStart = new Date(`${event.date}T${event.startTime}`);
-    const timeDiff = (eventStart.getTime() - now.getTime()) / 분;
-    return timeDiff > 0 && timeDiff <= event.notificationTime && !notifiedEvents.includes(event.id);
+    const minutesUntil = (eventStart.getTime() - now.getTime()) / MS_PER_MINUTE;
+    const withinWindow = minutesUntil > 0 && minutesUntil <= event.notificationTime;
+    const notNotified = !notifiedEvents.includes(event.id);
+    return withinWindow && notNotified;
   });
 }
 
