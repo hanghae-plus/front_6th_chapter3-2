@@ -1,9 +1,11 @@
-import { http, HttpResponse } from 'msw';
+import { randomUUID } from 'crypto';
+
+import { http, HttpResponse, RequestHandler } from 'msw';
 
 import { events } from '../__mocks__/response/events.json' assert { type: 'json' };
 import { Event } from '../types';
 
-export const handlers = [
+export const handlers: RequestHandler[] = [
   http.get('/api/events', () => {
     return HttpResponse.json({ events });
   }),
@@ -35,5 +37,14 @@ export const handlers = [
     }
 
     return new HttpResponse(null, { status: 404 });
+  }),
+
+  http.post('/api/events-list', async ({ request }) => {
+    const newEvents = (await request.json()) as Event[];
+    newEvents.forEach((event) => {
+      event.id = randomUUID();
+    });
+    events.push(...newEvents);
+    return HttpResponse.json(newEvents, { status: 201 });
   }),
 ];

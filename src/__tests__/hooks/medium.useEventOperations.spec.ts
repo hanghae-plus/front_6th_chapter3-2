@@ -8,7 +8,8 @@ import {
 } from '../../__mocks__/handlersUtils.ts';
 import { useEventOperations } from '../../hooks/useEventOperations.ts';
 import { server } from '../../setupTests.ts';
-import { Event } from '../../types.ts';
+import { Event, EventForm } from '../../types.ts';
+import { createEventForm, createEvents } from '../eventFactory.ts';
 
 const enqueueSnackbarFn = vi.fn();
 
@@ -170,4 +171,233 @@ it("네트워크 오류 시 '일정 삭제 실패'라는 텍스트가 노출되�
   expect(enqueueSnackbarFn).toHaveBeenCalledWith('일정 삭제 실패', { variant: 'error' });
 
   expect(result.current.events).toHaveLength(1);
+});
+
+// =========== 반복 일정 추가 테스트 ===========
+
+it('반복 일정 추가 시 반복 주기에 맞게 추가 일정이 생성된다', async () => {
+  setupMockHandlerCreation();
+
+  const { result } = renderHook(() => useEventOperations(false));
+
+  const event: EventForm = createEventForm({
+    title: '토요일 발제',
+    date: '2025-10-04',
+    repeat: { type: 'weekly', interval: 1, endDate: '2025-10-31' },
+  });
+
+  await act(async () => {
+    await result.current.saveEvent(event);
+  });
+
+  const repeatId = result.current.events[0].repeat?.id;
+
+  expect(result.current.events).toHaveLength(4);
+  expect(result.current.events[0].date).toBe('2025-10-04');
+  expect(result.current.events[1].date).toBe('2025-10-11');
+  expect(result.current.events[2].date).toBe('2025-10-18');
+  expect(result.current.events[3].date).toBe('2025-10-25');
+
+  expect(result.current.events[1].repeat?.id).toBe(repeatId);
+  expect(result.current.events[2].repeat?.id).toBe(repeatId);
+  expect(result.current.events[3].repeat?.id).toBe(repeatId);
+});
+
+it('매달 31일에 반복 일정 추가 시 31일이 없는 달은 일정이 추가되지 않는다', async () => {
+  setupMockHandlerCreation();
+
+  const { result } = renderHook(() => useEventOperations(false));
+
+  const event: EventForm = createEventForm({
+    title: '매달 31일 일정',
+    date: '2025-07-31',
+    repeat: { type: 'monthly', interval: 1 },
+  });
+
+  await act(async () => {
+    await result.current.saveEvent(event);
+  });
+
+  expect(result.current.events).toHaveLength(2);
+  expect(result.current.events[0].date).toBe('2025-07-31');
+  expect(result.current.events[1].date).toBe('2025-08-31');
+});
+
+it('2월 29일에 매년 이벤트 추가 시 윤년이 아닌 해엔 일정이 추가되지 않는다', async () => {
+  setupMockHandlerCreation();
+
+  const { result } = renderHook(() => useEventOperations(false));
+
+  const event: EventForm = createEventForm({
+    title: '2월 29일 일정',
+    date: '2020-02-29',
+    repeat: { type: 'yearly', interval: 1 },
+  });
+
+  await act(async () => {
+    await result.current.saveEvent(event);
+  });
+
+  expect(result.current.events).toHaveLength(2);
+  expect(result.current.events[0].date).toBe('2020-02-29');
+  expect(result.current.events[1].date).toBe('2024-02-29');
+});
+
+it('반복 일정을 단일 일정으로 수정 시 해당 일정만 수정된다', async () => {
+  const events: Event[] = createEvents([
+    {
+      id: '1',
+      date: '2025-10-01',
+      repeat: { id: '1', type: 'daily', interval: 1, endDate: '2025-10-03' },
+    },
+    {
+      id: '2',
+      date: '2025-10-02',
+      repeat: { id: '1', type: 'daily', interval: 1, endDate: '2025-10-03' },
+    },
+    {
+      id: '3',
+      date: '2025-10-03',
+      repeat: { id: '1', type: 'daily', interval: 1, endDate: '2025-10-03' },
+    },
+  ]);
+
+  setupMockHandlerUpdating(events);
+
+  const { result } = renderHook(() => useEventOperations(true));
+
+  await act(async () => {
+    await result.current.saveEvent({
+      ...events[0],
+      title: '수정된 일정',
+      repeat: { type: 'none', interval: 0 },
+    });
+  });
+
+  expect(result.current.events).toHaveLength(3);
+  expect(result.current.events[0].title).toBe('수정된 일정');
+  expect(result.current.events[0].repeat?.type).toBe('none');
+  expect(result.current.events[1].repeat?.type).toBe('daily');
+  expect(result.current.events[2].repeat?.type).toBe('daily');
+  expect(result.current.events[0].repeat?.id).toBe(undefined);
+  expect(result.current.events[1].repeat?.id).toBe('1');
+  expect(result.current.events[2].repeat?.id).toBe('1');
+});
+
+it('반복 일정 삭제 시 해당 일정만 삭제된다', async () => {
+  const events: Event[] = createEvents([
+    {
+      id: '1',
+      date: '2025-10-01',
+      repeat: { id: '1', type: 'daily', interval: 1, endDate: '2025-10-03' },
+    },
+    {
+      id: '2',
+      date: '2025-10-02',
+      repeat: { id: '1', type: 'daily', interval: 1, endDate: '2025-10-03' },
+    },
+    {
+      id: '3',
+      date: '2025-10-03',
+      repeat: { id: '1', type: 'daily', interval: 1, endDate: '2025-10-03' },
+    },
+  ]);
+
+  setupMockHandlerDeletion(events);
+
+  const { result } = renderHook(() => useEventOperations(true));
+
+  await act(async () => {
+    await result.current.deleteEvent('1');
+  });
+
+  expect(result.current.events).toHaveLength(2);
+  expect(result.current.events[0].id).toBe('2');
+  expect(result.current.events[1].id).toBe('3');
+  expect(result.current.events[0].repeat?.id).toBe('1');
+  expect(result.current.events[1].repeat?.id).toBe('1');
+});
+
+it('반복 일정의 반복 정보를 수정 시 새 반복 일정이 생성되며 기존 반복 일정은 유지된다', async () => {
+  const events: Event[] = createEvents([
+    {
+      id: '1',
+      date: '2025-10-01',
+      repeat: { id: '1', type: 'daily', interval: 1, endDate: '2025-10-03' },
+    },
+    {
+      id: '2',
+      date: '2025-10-02',
+      repeat: { id: '1', type: 'daily', interval: 1, endDate: '2025-10-03' },
+    },
+    {
+      id: '3',
+      date: '2025-10-03',
+      repeat: { id: '1', type: 'daily', interval: 1, endDate: '2025-10-03' },
+    },
+  ]);
+
+  setupMockHandlerUpdating(events);
+
+  const { result } = renderHook(() => useEventOperations(true));
+
+  await act(async () => {
+    await result.current.saveEvent({
+      ...events[0],
+      repeat: { type: 'weekly', interval: 1, endDate: '2025-10-15' },
+    });
+  });
+
+  expect(result.current.events).toHaveLength(5);
+  expect(result.current.events[0].repeat?.type).toBe('daily');
+  expect(result.current.events[1].repeat?.type).toBe('daily');
+  expect(result.current.events[2].repeat?.type).toBe('weekly');
+  expect(result.current.events[3].repeat?.type).toBe('weekly');
+  expect(result.current.events[4].repeat?.type).toBe('weekly');
+
+  const newRepeatId = result.current.events[2].repeat?.id;
+
+  expect(result.current.events[3].repeat?.id).toBe(newRepeatId);
+  expect(result.current.events[4].repeat?.id).toBe(newRepeatId);
+});
+
+it('반복 일정 수정 시 반복 정보를 유지하더라도 새로운 반복 일정이 생성된다', async () => {
+  const events: Event[] = createEvents([
+    {
+      id: '1',
+      date: '2025-10-01',
+      repeat: { id: '1', type: 'daily', interval: 1, endDate: '2025-10-03' },
+    },
+    {
+      id: '2',
+      date: '2025-10-02',
+      repeat: { id: '1', type: 'daily', interval: 1, endDate: '2025-10-03' },
+    },
+    {
+      id: '3',
+      date: '2025-10-03',
+      repeat: { id: '1', type: 'daily', interval: 1, endDate: '2025-10-03' },
+    },
+  ]);
+
+  setupMockHandlerUpdating(events);
+
+  const { result } = renderHook(() => useEventOperations(true));
+
+  await act(async () => {
+    await result.current.saveEvent({
+      ...events[0],
+      title: '수정된 일정',
+    });
+  });
+
+  const oldRepeatId = result.current.events[0].repeat?.id;
+  const newRepeatId = result.current.events[2].repeat?.id;
+
+  expect(result.current.events).toHaveLength(5);
+  expect(result.current.events[0].repeat?.id).toBe(oldRepeatId);
+  expect(result.current.events[1].repeat?.id).toBe(oldRepeatId);
+  expect(result.current.events[2].repeat?.id).toBe(newRepeatId);
+  expect(result.current.events[3].repeat?.id).toBe(newRepeatId);
+  expect(result.current.events[4].repeat?.id).toBe(newRepeatId);
 });
