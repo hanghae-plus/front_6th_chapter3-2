@@ -465,7 +465,7 @@ describe('반복 기능', () => {
     expect(await eventList.findAllByText('정기 회의')).toHaveLength(1);
   });
 
-  it('반복 생성된 일정이 기존 일정과 충돌되면 경고가 노출된다 ', async () => {
+  it('반복 생성된 일정이 기존 일정과 충돌되면 경고가 노출된다', async () => {
     setupMockHandlerRepeatCreation([
       {
         id: '1',

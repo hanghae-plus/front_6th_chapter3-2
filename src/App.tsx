@@ -1,9 +1,9 @@
-import Notifications from '@mui/icons-material/Notifications';
-import Close from '@mui/icons-material/Close';
 import ChevronLeft from '@mui/icons-material/ChevronLeft';
 import ChevronRight from '@mui/icons-material/ChevronRight';
+import Close from '@mui/icons-material/Close';
 import Delete from '@mui/icons-material/Delete';
 import Edit from '@mui/icons-material/Edit';
+import Notifications from '@mui/icons-material/Notifications';
 import {
   Alert,
   AlertTitle,
@@ -50,8 +50,8 @@ import {
   getWeeksAtMonth,
 } from './utils/dateUtils';
 import { findOverlappingEvents, findOverlappingRepeatEvents } from './utils/eventOverlap';
-import { getTimeErrorMessage } from './utils/timeValidation';
 import { getRepeatEventList } from './utils/repeatUtils.ts';
+import { getTimeErrorMessage } from './utils/timeValidation';
 
 const categories = ['업무', '개인', '가족', '기타'];
 
@@ -146,7 +146,7 @@ function App() {
       eventData.repeat.type !== 'none'
         ? findOverlappingRepeatEvents(getRepeatEventList(eventData), events)
         : findOverlappingEvents(eventData, events);
-        
+
     if (overlapping.length > 0) {
       setOverlappingEvents(overlapping);
       setIsOverlapDialogOpen(true);
