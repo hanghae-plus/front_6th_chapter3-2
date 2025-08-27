@@ -7,10 +7,8 @@ export const toSingleEvent = (event: Event | EventForm): Event | EventForm => ({
 });
 
 // 반복 시작 날짜가 반복 종료 날짜보다 앞인지 확인
-export const checkEndDateValid = (start: string, end?: string): boolean => {
-  const repeatStart = new Date(start);
-  const repeatEnd = end ? new Date(end) : new Date('2025-10-30');
-  return repeatStart <= repeatEnd;
+export const checkEndDateValid = (start: Date, end: Date): boolean => {
+  return start <= end;
 };
 
 // 매일 반복 일정 배열
@@ -20,6 +18,10 @@ export const getDailyRepeatEvents = (event: EventForm): EventForm[] => {
 
   let current = new Date(date);
   const endDate = repeat.endDate ? new Date(repeat.endDate) : new Date('2025-10-30');
+
+  if (!checkEndDateValid(current, endDate)) {
+    return [{ ...event, date: current.toISOString().slice(0, 10) }];
+  }
 
   while (current <= endDate) {
     results.push({ ...event, date: current.toISOString().slice(0, 10) }); // YYYY-MM-DD
@@ -35,6 +37,10 @@ export const getWeeklyRepeatEvents = (event: EventForm): EventForm[] => {
 
   let current = new Date(date);
   const endDate = repeat.endDate ? new Date(repeat.endDate) : new Date('2025-10-30');
+
+  if (!checkEndDateValid(current, endDate)) {
+    return [{ ...event, date: current.toISOString().slice(0, 10) }];
+  }
 
   while (current <= endDate) {
     results.push({ ...event, date: current.toISOString().slice(0, 10) });
@@ -53,10 +59,13 @@ export const getMonthlyRepeatEvents = (event: EventForm): EventForm[] => {
   const day = current.getDate();
   const interval = repeat.interval;
 
+  if (!checkEndDateValid(current, endDate)) {
+    return [{ ...event, date: current.toISOString().slice(0, 10) }];
+  }
+
   while (current <= endDate) {
     results.push({ ...event, date: current.toISOString().slice(0, 10) });
 
-    // 다음 달로 이동
     let nextYear = current.getFullYear();
     let nextMonth = current.getMonth() + interval;
 
@@ -65,7 +74,6 @@ export const getMonthlyRepeatEvents = (event: EventForm): EventForm[] => {
       nextMonth = nextMonth % 12;
     }
 
-    // 같은 날짜가 존재하는 달을 찾을 때까지 다음 달로 이동
     let next = new Date(nextYear, nextMonth, day);
     while (next.getDate() !== day) {
       nextMonth++;
@@ -92,6 +100,10 @@ export const getYearlyRepeatEvents = (event: EventForm): EventForm[] => {
 
   const month = current.getMonth();
   const day = current.getDate();
+
+  if (!checkEndDateValid(current, endDate)) {
+    return [{ ...event, date: current.toISOString().slice(0, 10) }];
+  }
 
   while (current <= endDate) {
     results.push({ ...event, date: current.toISOString().slice(0, 10) });

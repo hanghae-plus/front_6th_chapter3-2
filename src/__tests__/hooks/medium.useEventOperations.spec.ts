@@ -307,6 +307,39 @@ it('반복 종료일이 없으면 최대 2025-10-30일까지 일정이 생성된
   );
 });
 
+it('반복 시작일이 2025-10-30 이후이고 반복 종료일이 없으면 일정이 하나만 생성된다', async () => {
+  setupMockHandlerListCreation();
+  const { result } = renderHook(() => useEventOperations(false));
+
+  await act(() => Promise.resolve(null));
+
+  // repeat endDate를 지정하지 않음
+  // endDate 미지정 시 최대 날짜는 2025-10-30
+  const newEvent: EventForm = {
+    title: '정기 회의',
+    date: '2025-11-01',
+    startTime: '11:00',
+    endTime: '12:00',
+    description: '정기 팀 미팅',
+    location: '회의실 A',
+    category: '업무',
+    repeat: { type: 'daily', interval: 1 },
+    notificationTime: 10,
+  };
+
+  await act(async () => {
+    await result.current.saveEventList(newEvent);
+  });
+
+  expect(result.current.events.length).toBe(1);
+  expect(result.current.events).toContainEqual(
+    expect.objectContaining({
+      title: '정기 회의',
+      date: '2025-11-01',
+    })
+  );
+});
+
 it('반복 종료 조건으로 특정 날짜를 지정할 수 있다', async () => {
   setupMockHandlerListCreation();
 
