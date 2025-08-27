@@ -9,11 +9,11 @@ import { debug } from 'vitest-preview';
 
 import {
   setupMockHandlerCreation,
-  setupMockHandlerDeleteRepeat,
-  setupMockHandlerDeletion,
-  setupMockHandlerListCreation,
-  setupMockHandlerUpdateRepeat,
   setupMockHandlerUpdating,
+  setupMockHandlerDeletion,
+  setupMockHandlerRepeatCreation,
+  setupMockHandlerRepeatUpdate,
+  setupMockHandlerRepeatDelete,
 } from '../__mocks__/handlersUtils';
 import App from '../App';
 import { server } from '../setupTests';
@@ -365,7 +365,7 @@ describe('반복 기능', () => {
   });
 
   it('생성한 반복 일정이 반복 설정에 맞게 표시된다', async () => {
-    setupMockHandlerListCreation();
+    setupMockHandlerRepeatCreation();
     const { user } = setup(<App />);
 
     await user.click(screen.getAllByText('일정 추가')[0]);
@@ -401,7 +401,7 @@ describe('반복 기능', () => {
 
   // 반복 일정은 제목 앞에 * 표시
   it('캘린더 뷰에서 반복 일정은 아이콘으로 표시된다', async () => {
-    setupMockHandlerListCreation();
+    setupMockHandlerRepeatCreation();
     const { user } = setup(<App />);
 
     await user.click(screen.getAllByText('일정 추가')[0]);
@@ -433,7 +433,7 @@ describe('반복 기능', () => {
   it('수정된 일정에서는 반복 일정 아이콘이 사라진다', async () => {
     const { user } = setup(<App />);
 
-    setupMockHandlerUpdateRepeat();
+    setupMockHandlerRepeatUpdate();
 
     await user.click(await screen.findByLabelText('Edit event'));
 
@@ -449,7 +449,7 @@ describe('반복 기능', () => {
   }, 30000);
 
   it('반복 일정을 삭제하면 해당 일정만 달력에서 제거된다', async () => {
-    setupMockHandlerDeleteRepeat();
+    setupMockHandlerRepeatDelete();
 
     const { user } = setup(<App />);
     const eventList = within(screen.getByTestId('event-list'));
@@ -466,7 +466,7 @@ describe('반복 기능', () => {
   });
 
   it('반복 생성된 일정이 기존 일정과 충돌되면 경고가 노출된다 ', async () => {
-    setupMockHandlerListCreation([
+    setupMockHandlerRepeatCreation([
       {
         id: '1',
         title: '기존 회의',
