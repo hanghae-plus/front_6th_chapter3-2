@@ -1,4 +1,12 @@
-import { Notifications, ChevronLeft, ChevronRight, Delete, Edit, Close } from '@mui/icons-material';
+import {
+  Notifications,
+  ChevronLeft,
+  ChevronRight,
+  Delete,
+  Edit,
+  Close,
+  Repeat,
+} from '@mui/icons-material';
 import {
   Alert,
   AlertTitle,
@@ -35,8 +43,7 @@ import { useEventForm } from './hooks/useEventForm.ts';
 import { useEventOperations } from './hooks/useEventOperations.ts';
 import { useNotifications } from './hooks/useNotifications.ts';
 import { useSearch } from './hooks/useSearch.ts';
-// import { Event, EventForm, RepeatType } from './types';
-import { Event, EventForm } from './types';
+import { Event, EventForm, RepeatType, RepeatEndCondition } from './types';
 import {
   formatDate,
   formatMonth,
@@ -77,11 +84,15 @@ function App() {
     isRepeating,
     setIsRepeating,
     repeatType,
-    // setRepeatType,
+    setRepeatType,
     repeatInterval,
-    // setRepeatInterval,
+    setRepeatInterval,
     repeatEndDate,
-    // setRepeatEndDate,
+    setRepeatEndDate,
+    repeatEndCondition,
+    setRepeatEndCondition,
+    repeatEndCount,
+    setRepeatEndCount,
     notificationTime,
     setNotificationTime,
     startTimeError,
@@ -107,6 +118,15 @@ function App() {
 
   const { enqueueSnackbar } = useSnackbar();
 
+  // 반복 설정 객체 생성 헬퍼 함수
+  const createRepeatConfig = () => ({
+    type: isRepeating ? repeatType : 'none',
+    interval: repeatInterval,
+    endDate: repeatEndDate || undefined,
+    endCondition: isRepeating ? repeatEndCondition : undefined,
+    endCount: isRepeating && repeatEndCondition === 'endCount' ? repeatEndCount : undefined,
+  });
+
   const addOrUpdateEvent = async () => {
     if (!title || !date || !startTime || !endTime) {
       enqueueSnackbar('필수 정보를 모두 입력해주세요.', { variant: 'error' });
@@ -127,11 +147,7 @@ function App() {
       description,
       location,
       category,
-      repeat: {
-        type: isRepeating ? repeatType : 'none',
-        interval: repeatInterval,
-        endDate: repeatEndDate || undefined,
-      },
+      repeat: createRepeatConfig(),
       notificationTime,
     };
 
@@ -201,6 +217,13 @@ function App() {
                           >
                             <Stack direction="row" spacing={1} alignItems="center">
                               {isNotified && <Notifications fontSize="small" />}
+                              {event.repeat.type !== 'none' && (
+                                <Repeat
+                                  fontSize="small"
+                                  sx={{ color: '#1976d2' }}
+                                  data-testid="RepeatIcon"
+                                />
+                              )}
                               <Typography
                                 variant="caption"
                                 noWrap
@@ -288,6 +311,13 @@ function App() {
                                 >
                                   <Stack direction="row" spacing={1} alignItems="center">
                                     {isNotified && <Notifications fontSize="small" />}
+                                    {event.repeat.type !== 'none' && (
+                                      <Repeat
+                                        fontSize="small"
+                                        sx={{ color: '#1976d2' }}
+                                        data-testid="RepeatIcon"
+                                      />
+                                    )}
                                     <Typography
                                       variant="caption"
                                       noWrap
@@ -437,26 +467,35 @@ function App() {
             </Select>
           </FormControl>
 
-          {/* ! 반복은 8주차 과제에 포함됩니다. 구현하고 싶어도 참아주세요~ */}
-          {/* {isRepeating && (
+          {isRepeating && (
             <Stack spacing={2}>
               <FormControl fullWidth>
-                <FormLabel>반복 유형</FormLabel>
+                <FormLabel data-testId="repeat-type-label">반복 유형</FormLabel>
                 <Select
+                  data-testId="repeat-type-select"
                   size="small"
                   value={repeatType}
                   onChange={(e) => setRepeatType(e.target.value as RepeatType)}
                 >
-                  <MenuItem value="daily">매일</MenuItem>
-                  <MenuItem value="weekly">매주</MenuItem>
-                  <MenuItem value="monthly">매월</MenuItem>
-                  <MenuItem value="yearly">매년</MenuItem>
+                  <MenuItem value="daily" aria-label="daily-option">
+                    매일
+                  </MenuItem>
+                  <MenuItem value="weekly" aria-label="weekly-option">
+                    매주
+                  </MenuItem>
+                  <MenuItem value="monthly" aria-label="monthly-option">
+                    매월
+                  </MenuItem>
+                  <MenuItem value="yearly" aria-label="yearly-option">
+                    매년
+                  </MenuItem>
                 </Select>
               </FormControl>
               <Stack direction="row" spacing={2}>
                 <FormControl fullWidth>
-                  <FormLabel>반복 간격</FormLabel>
+                  <FormLabel data-testId="repeat-interval-label">반복 간격</FormLabel>
                   <TextField
+                    data-testId="repeat-interval-select"
                     size="small"
                     type="number"
                     value={repeatInterval}
@@ -465,17 +504,61 @@ function App() {
                   />
                 </FormControl>
                 <FormControl fullWidth>
-                  <FormLabel>반복 종료일</FormLabel>
+                  <FormLabel data-testId="repeat-end-condition-label">반복 종료 조건</FormLabel>
+                  <Select
+                    data-testId="repeat-end-condition-select"
+                    size="small"
+                    value={repeatEndCondition}
+                    onChange={(e) => setRepeatEndCondition(e.target.value as RepeatEndCondition)}
+                  >
+                    <MenuItem value="endDate" aria-label="endDate-option">
+                      특정 날짜까지
+                    </MenuItem>
+                    <MenuItem value="endCount" aria-label="endCount-option">
+                      특정 횟수만큼
+                    </MenuItem>
+                    <MenuItem value="none" aria-label="none-option">
+                      종료 없음
+                    </MenuItem>
+                  </Select>
+                </FormControl>
+              </Stack>
+
+              {/* 종료 조건별 추가 입력 필드 */}
+              {repeatEndCondition === 'endDate' && (
+                <FormControl fullWidth>
+                  <FormLabel data-testId="repeat-end-date-label">종료 날짜</FormLabel>
                   <TextField
+                    data-testId="repeat-end-date-input"
                     size="small"
                     type="date"
                     value={repeatEndDate}
                     onChange={(e) => setRepeatEndDate(e.target.value)}
                   />
                 </FormControl>
-              </Stack>
+              )}
+
+              {repeatEndCondition === 'endCount' && (
+                <FormControl fullWidth>
+                  <FormLabel data-testId="repeat-end-count-label">반복 횟수</FormLabel>
+                  <TextField
+                    data-testId="repeat-end-count-input"
+                    size="small"
+                    type="number"
+                    value={repeatEndCount}
+                    onChange={(e) => setRepeatEndCount(Number(e.target.value))}
+                    slotProps={{ htmlInput: { min: 1 } }}
+                  />
+                </FormControl>
+              )}
+
+              {repeatEndCondition === 'none' && (
+                <Typography variant="body2" color="text.secondary" data-testId="repeat-none-info">
+                  2025년 6월 30일까지 반복됩니다.
+                </Typography>
+              )}
             </Stack>
-          )} */}
+          )}
 
           <Button
             data-testid="event-submit-button"
@@ -618,11 +701,7 @@ function App() {
                 description,
                 location,
                 category,
-                repeat: {
-                  type: isRepeating ? repeatType : 'none',
-                  interval: repeatInterval,
-                  endDate: repeatEndDate || undefined,
-                },
+                repeat: createRepeatConfig(),
                 notificationTime,
               });
             }}

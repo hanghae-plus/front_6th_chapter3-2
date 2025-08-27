@@ -54,6 +54,33 @@ const saveSchedule = async (
   await user.click(screen.getByTestId('event-submit-button'));
 };
 
+// 반복 일정 생성을 위한 헬퍼 함수
+const saveRecurringSchedule = async (
+  user: UserEvent,
+  form: Omit<Event, 'id' | 'notificationTime' | 'repeat'>,
+  repeatType: 'weekly' | 'daily' | 'monthly' | 'yearly'
+) => {
+  const { title, date, startTime, endTime, location, description, category } = form;
+
+  await user.click(screen.getAllByText('일정 추가')[0]);
+
+  await user.type(screen.getByLabelText('제목'), title);
+  await user.type(screen.getByLabelText('날짜'), date);
+  await user.type(screen.getByLabelText('시작 시간'), startTime);
+  await user.type(screen.getByLabelText('종료 시간'), endTime);
+  await user.type(screen.getByLabelText('설명'), description);
+  await user.type(screen.getByLabelText('위치'), location);
+  await user.click(screen.getByLabelText('카테고리'));
+  await user.click(within(screen.getByLabelText('카테고리')).getByRole('combobox'));
+  await user.click(screen.getByRole('option', { name: `${category}-option` }));
+
+  // 반복 설정
+  await user.click(within(screen.getByTestId('repeat-type-select')).getByRole('combobox'));
+  await user.click(screen.getByRole('option', { name: `${repeatType}-option` }));
+
+  await user.click(screen.getByTestId('event-submit-button'));
+};
+
 describe('일정 CRUD 및 기본 기능', () => {
   it('입력한 새로운 일정 정보에 맞춰 모든 필드가 이벤트 리스트에 정확히 저장된다.', async () => {
     setupMockHandlerCreation();
@@ -339,4 +366,378 @@ it('notificationTime을 10으로 하면 지정 시간 10분 전 알람 텍스트
   });
 
   expect(screen.getByText('10분 후 기존 회의 일정이 시작됩니다.')).toBeInTheDocument();
+});
+
+describe('반복 일정 표시', () => {
+  it('캘린더 뷰에서 반복 일정을 시각적으로 구분하여 표시해야 한다', async () => {
+    setupMockHandlerCreation();
+
+    const { user } = setup(<App />);
+
+    // 반복 일정 생성 - 리팩토링된 헬퍼 함수 사용
+    await saveRecurringSchedule(
+      user,
+      {
+        title: '반복 회의',
+        date: '2025-10-15',
+        startTime: '09:00',
+        endTime: '10:00',
+        description: '매주 반복 회의',
+        location: '회의실 A',
+        category: '업무',
+      },
+      'weekly'
+    );
+
+    // 캘린더 뷰에서 반복 일정 시각적 구분 확인
+    const monthView = within(screen.getByTestId('month-view'));
+
+    // 반복 일정임을 나타내는 시각적 요소 검증
+    const repeatIcon = monthView.getByTestId('RepeatIcon');
+    expect(repeatIcon).toBeInTheDocument();
+    expect(repeatIcon).toBeVisible();
+  });
+
+  it('반복하지 않는 일정은 시각적 구분 표시가 없어야 한다', async () => {
+    // 빈 이벤트 목록으로 시작
+    server.use(
+      http.get('/api/events', () => {
+        return HttpResponse.json({ events: [] });
+      })
+    );
+
+    const { user } = setup(<App />);
+
+    // 단일 일정 생성 - 기존 헬퍼 함수 사용 (반복 설정 없음)
+    await saveSchedule(user, {
+      title: '단일 회의',
+      date: '2025-10-15',
+      startTime: '09:00',
+      endTime: '10:00',
+      description: '단발성 회의',
+      location: '회의실 A',
+      category: '업무',
+    });
+
+    server.use(
+      http.post('/api/events', async ({ request }) => {
+        const requestBody = await request.json();
+        return HttpResponse.json({
+          ...(requestBody as Record<string, string | number | object>),
+          id: Date.now().toString(),
+        });
+      }),
+      http.get('/api/events', () => {
+        return HttpResponse.json({
+          events: [
+            {
+              id: '1',
+              title: '단일 회의',
+              date: '2025-10-15',
+              startTime: '09:00',
+              endTime: '10:00',
+              description: '단발성 회의',
+              location: '회의실 A',
+              category: '업무',
+              repeat: { type: 'none', interval: 1 },
+              notificationTime: 10,
+            },
+          ],
+        });
+      })
+    );
+
+    // 캘린더 뷰에서 반복 아이콘이 없어야 함
+    const monthView = within(screen.getByTestId('month-view'));
+    expect(monthView.queryByTestId('RepeatIcon')).not.toBeInTheDocument();
+  });
+});
+
+describe('반복 종료 조건', () => {
+  // 반복 일정 생성을 위한 기본 입력 헬퍼 함수
+  const fillBasicEventFields = async (user: UserEvent, title: string, description: string) => {
+    await user.click(screen.getAllByText('일정 추가')[0]);
+    await user.type(screen.getByLabelText('제목'), title);
+    await user.type(screen.getByLabelText('날짜'), '2025-01-01');
+    await user.type(screen.getByLabelText('시작 시간'), '09:00');
+    await user.type(screen.getByLabelText('종료 시간'), '10:00');
+    await user.type(screen.getByLabelText('설명'), description);
+    await user.type(screen.getByLabelText('위치'), '회의실 A');
+    await user.click(screen.getByLabelText('카테고리'));
+    await user.click(within(screen.getByLabelText('카테고리')).getByRole('combobox'));
+    await user.click(screen.getByRole('option', { name: '업무-option' }));
+  };
+
+  // 반복 설정 헬퍼 함수
+  const setRepeatType = async (user: UserEvent, repeatType: string) => {
+    await user.click(within(screen.getByTestId('repeat-type-select')).getByRole('combobox'));
+    await user.click(screen.getByRole('option', { name: `${repeatType}-option` }));
+  };
+
+  // 종료 조건 설정 헬퍼 함수
+  const setEndCondition = async (user: UserEvent, condition: string, value?: string) => {
+    await user.click(
+      within(screen.getByTestId('repeat-end-condition-select')).getByRole('combobox')
+    );
+    await user.click(screen.getByRole('option', { name: `${condition}-option` }));
+
+    if (condition === 'endDate' && value) {
+      await user.type(screen.getByTestId('repeat-end-date-input'), value);
+    } else if (condition === 'endCount' && value) {
+      const countInput = screen.getByTestId('repeat-end-count-input');
+      await user.type(countInput, `{selectall}${value}`);
+    }
+  };
+
+  it('특정 날짜까지 반복 조건을 설정할 수 있다', async () => {
+    setupMockHandlerCreation();
+
+    const { user } = setup(<App />);
+
+    await fillBasicEventFields(user, '특정날짜까지 반복', '특정 날짜까지 반복 테스트');
+    await setRepeatType(user, 'daily');
+    await setEndCondition(user, 'endDate', '2025-01-05');
+
+    await user.click(screen.getByTestId('event-submit-button'));
+
+    // 성공 메시지 확인
+    expect(screen.getByText('반복 일정이 생성되었습니다.')).toBeInTheDocument();
+  });
+
+  it('특정 횟수만큼 반복 조건을 설정할 수 있다', async () => {
+    setupMockHandlerCreation();
+
+    const { user } = setup(<App />);
+
+    await fillBasicEventFields(user, '3회 반복', '3회 반복 테스트');
+    await setRepeatType(user, 'weekly');
+    await setEndCondition(user, 'endCount', '3');
+
+    await user.click(screen.getByTestId('event-submit-button'));
+
+    // 성공 메시지 확인
+    expect(screen.getByText('반복 일정이 생성되었습니다.')).toBeInTheDocument();
+  });
+
+  it('종료 없음 조건을 설정할 수 있다', async () => {
+    setupMockHandlerCreation();
+
+    const { user } = setup(<App />);
+
+    await fillBasicEventFields(user, '무한 반복', '종료 없음 테스트');
+    await setRepeatType(user, 'monthly');
+    await setEndCondition(user, 'none');
+
+    // 안내 텍스트 확인
+    expect(screen.getByTestId('repeat-none-info')).toHaveTextContent(
+      '2025년 6월 30일까지 반복됩니다.'
+    );
+
+    await user.click(screen.getByTestId('event-submit-button'));
+
+    // 성공 메시지 확인
+    expect(screen.getByText('반복 일정이 생성되었습니다.')).toBeInTheDocument();
+  });
+});
+
+describe('반복 일정 단일 수정', () => {
+  it('반복 일정을 수정하면 단일 일정으로 변경되고 반복 아이콘이 사라진다', async () => {
+    // 반복 일정이 있는 상태로 시작
+    server.use(
+      http.get('/api/events', () => {
+        return HttpResponse.json({
+          events: [
+            {
+              id: '1',
+              title: '매주 회의',
+              date: '2025-10-15',
+              startTime: '09:00',
+              endTime: '10:00',
+              description: '매주 반복 회의',
+              location: '회의실 A',
+              category: '업무',
+              repeat: {
+                type: 'weekly',
+                interval: 1,
+                endDate: '2025-12-31',
+                endCondition: 'endDate',
+              },
+              notificationTime: 10,
+            },
+          ],
+        });
+      })
+    );
+
+    const { user } = setup(<App />);
+    await screen.findByText('일정 로딩 완료!');
+
+    // 초기 상태에서 반복 아이콘이 있는지 확인
+    const monthView = within(screen.getByTestId('month-view'));
+    expect(monthView.getByTestId('RepeatIcon')).toBeInTheDocument();
+
+    // 반복 일정 수정하기 - Edit 버튼 클릭
+    const editButtons = screen.getAllByLabelText('Edit event');
+    await user.click(editButtons[0]);
+
+    // 제목 수정
+    const titleInput = screen.getByLabelText('제목');
+    await user.clear(titleInput);
+    await user.type(titleInput, '수정된 단일 회의');
+
+    // 설명 수정
+    const descriptionInput = screen.getByLabelText('설명');
+    await user.clear(descriptionInput);
+    await user.type(descriptionInput, '단일 회의로 변경됨');
+
+    // 저장하기 전 수정된 일정이 단일로 변경되는지 확인하는 목 설정
+    server.use(
+      http.put('/api/events/1', async ({ request }) => {
+        const requestBody = await request.json();
+        const eventData = requestBody as Event;
+
+        // 반복 일정 수정 시 단일 일정으로 변경되는지 확인
+        expect(eventData.repeat.type).toBe('none');
+        expect(eventData.title).toBe('수정된 단일 회의');
+        expect(eventData.description).toBe('단일 회의로 변경됨');
+
+        return HttpResponse.json({
+          ...eventData,
+          id: '1',
+        });
+      }),
+      http.get('/api/events', () => {
+        return HttpResponse.json({
+          events: [
+            {
+              id: '1',
+              title: '수정된 단일 회의',
+              date: '2025-10-15',
+              startTime: '09:00',
+              endTime: '10:00',
+              description: '단일 회의로 변경됨',
+              location: '회의실 A',
+              category: '업무',
+              repeat: { type: 'none', interval: 1 },
+              notificationTime: 10,
+            },
+          ],
+        });
+      })
+    );
+
+    await user.click(screen.getByTestId('event-submit-button'));
+
+    // 성공 메시지 확인
+    expect(screen.getByText('일정이 수정되었습니다.')).toBeInTheDocument();
+
+    // 수정 후 반복 아이콘이 사라졌는지 확인
+    await screen.findByText('일정 로딩 완료!');
+    const updatedMonthView = within(screen.getByTestId('month-view'));
+    expect(updatedMonthView.queryByTestId('RepeatIcon')).not.toBeInTheDocument();
+
+    // 제목이 변경되었는지 확인 - event-list 내에서 확인
+    const eventList = within(screen.getByTestId('event-list'));
+    expect(eventList.getByText('수정된 단일 회의')).toBeInTheDocument();
+  });
+});
+
+describe('반복 일정 단일 삭제', () => {
+  it('반복 일정을 삭제하면 해당 일정만 삭제되고 다른 반복 일정은 남아있다', async () => {
+    // 반복 일정이 여러 개 있는 상태로 시작
+    server.use(
+      http.get('/api/events', () => {
+        return HttpResponse.json({
+          events: [
+            {
+              id: '1',
+              title: '매주 회의',
+              date: '2025-10-15',
+              startTime: '09:00',
+              endTime: '10:00',
+              description: '매주 반복 회의',
+              location: '회의실 A',
+              category: '업무',
+              repeat: {
+                type: 'weekly',
+                interval: 1,
+                endDate: '2025-12-31',
+                endCondition: 'endDate',
+              },
+              notificationTime: 10,
+            },
+            {
+              id: '2',
+              title: '매주 회의',
+              date: '2025-10-22',
+              startTime: '09:00',
+              endTime: '10:00',
+              description: '매주 반복 회의',
+              location: '회의실 A',
+              category: '업무',
+              repeat: {
+                type: 'weekly',
+                interval: 1,
+                endDate: '2025-12-31',
+                endCondition: 'endDate',
+              },
+              notificationTime: 10,
+            },
+          ],
+        });
+      })
+    );
+
+    const { user } = setup(<App />);
+    await screen.findByText('일정 로딩 완료!');
+
+    // 초기 상태에서 두 개의 반복 일정이 있는지 확인
+    const eventList = within(screen.getByTestId('event-list'));
+    const meetingEvents = eventList.getAllByText('매주 회의');
+    expect(meetingEvents).toHaveLength(2);
+
+    // 첫 번째 반복 일정 삭제
+    const deleteButtons = screen.getAllByLabelText('Delete event');
+
+    // 삭제 후 해당 일정만 삭제되고 다른 반복 일정은 남아있어야 함
+    server.use(
+      http.delete('/api/events/1', () => {
+        return HttpResponse.json({ success: true });
+      }),
+      http.get('/api/events', () => {
+        return HttpResponse.json({
+          events: [
+            {
+              id: '2',
+              title: '매주 회의',
+              date: '2025-10-22',
+              startTime: '09:00',
+              endTime: '10:00',
+              description: '매주 반복 회의',
+              location: '회의실 A',
+              category: '업무',
+              repeat: {
+                type: 'weekly',
+                interval: 1,
+                endDate: '2025-12-31',
+                endCondition: 'endDate',
+              },
+              notificationTime: 10,
+            },
+          ],
+        });
+      })
+    );
+
+    await user.click(deleteButtons[0]);
+
+    // 성공 메시지 확인
+    expect(screen.getByText('일정이 삭제되었습니다.')).toBeInTheDocument();
+
+    // 하나의 반복 일정만 남아있는지 확인
+    await screen.findByText('일정 로딩 완료!');
+    const updatedEventList = within(screen.getByTestId('event-list'));
+    const remainingMeetingEvents = updatedEventList.getAllByText('매주 회의');
+    expect(remainingMeetingEvents).toHaveLength(1);
+  });
 });
