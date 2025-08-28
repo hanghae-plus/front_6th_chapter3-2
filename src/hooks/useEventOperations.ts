@@ -1,7 +1,9 @@
 import { useSnackbar } from 'notistack';
 import { useEffect, useState } from 'react';
 
+import { MAX_END_DATE } from '../constants/repeat';
 import { Event, EventForm } from '../types';
+import { generateRepeatEvent } from '../utils/eventUtils';
 
 export const useEventOperations = (editing: boolean, onSave?: () => void) => {
   const [events, setEvents] = useState<Event[]>([]);
@@ -24,7 +26,18 @@ export const useEventOperations = (editing: boolean, onSave?: () => void) => {
   const saveEvent = async (eventData: Event | EventForm) => {
     try {
       let response;
+
+      if (!editing && eventData.repeat && eventData.repeat.type !== 'none') {
+        await createRepeatEvent(eventData);
+        return;
+      }
+
       if (editing) {
+        if (eventData.repeat && eventData.repeat.type !== 'none') {
+          await updateRepeatEventToSingleEvent(eventData as Event);
+          return;
+        }
+
         response = await fetch(`/api/events/${(eventData as Event).id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -53,6 +66,62 @@ export const useEventOperations = (editing: boolean, onSave?: () => void) => {
     }
   };
 
+  const createRepeatEvent = async (eventData: EventForm) => {
+    const { type, interval, endDate: repeatEndDate } = eventData.repeat;
+
+    const startDate = new Date(eventData.date);
+    const endDate = repeatEndDate
+      ? new Date(Math.min(new Date(repeatEndDate).valueOf(), MAX_END_DATE.valueOf()))
+      : MAX_END_DATE;
+
+    const dates = generateRepeatEvent(startDate, interval, type, endDate);
+
+    for (const date of dates) {
+      try {
+        const response = await fetch('/api/events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...eventData, date }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to create event for ${date}`);
+        }
+      } catch (error) {
+        console.error('Error creating repeat event:', error);
+        enqueueSnackbar('반복 일정 생성 실패', { variant: 'error' });
+        break;
+      }
+    }
+
+    // 반복 일정 생성 완료 후 이벤트 목록 새로고침
+    await fetchEvents();
+    enqueueSnackbar('반복 일정이 생성되었습니다.', { variant: 'success' });
+  };
+
+  const updateRepeatEventToSingleEvent = async (eventData: Event) => {
+    const editedEventData: Event = {
+      ...eventData,
+      repeat: {
+        type: 'none',
+        interval: 0,
+      },
+    };
+
+    const response = await fetch(`/api/events/${eventData.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(editedEventData),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to update repeat event to single event');
+    }
+
+    await fetchEvents();
+    enqueueSnackbar('반복 일정이 단일 일정으로 변경되었습니다.', { variant: 'success' });
+  };
+
   const deleteEvent = async (id: string) => {
     try {
       const response = await fetch(`/api/events/${id}`, { method: 'DELETE' });
@@ -79,5 +148,5 @@ export const useEventOperations = (editing: boolean, onSave?: () => void) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { events, fetchEvents, saveEvent, deleteEvent };
+  return { events, fetchEvents, saveEvent, createRepeatEvent, deleteEvent };
 };

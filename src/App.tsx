@@ -1,4 +1,12 @@
-import { Notifications, ChevronLeft, ChevronRight, Delete, Edit, Close } from '@mui/icons-material';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Close,
+  Delete,
+  Edit,
+  Notifications,
+  Repeat,
+} from '@mui/icons-material';
 import {
   Alert,
   AlertTitle,
@@ -35,8 +43,7 @@ import { useEventForm } from './hooks/useEventForm.ts';
 import { useEventOperations } from './hooks/useEventOperations.ts';
 import { useNotifications } from './hooks/useNotifications.ts';
 import { useSearch } from './hooks/useSearch.ts';
-// import { Event, EventForm, RepeatType } from './types';
-import { Event, EventForm } from './types';
+import { Event, EventForm, RepeatType } from './types';
 import {
   formatDate,
   formatMonth,
@@ -77,11 +84,11 @@ function App() {
     isRepeating,
     setIsRepeating,
     repeatType,
-    // setRepeatType,
+    setRepeatType,
     repeatInterval,
-    // setRepeatInterval,
+    setRepeatInterval,
     repeatEndDate,
-    // setRepeatEndDate,
+    setRepeatEndDate,
     notificationTime,
     setNotificationTime,
     startTimeError,
@@ -149,7 +156,9 @@ function App() {
     const weekDates = getWeekDates(currentDate);
     return (
       <Stack data-testid="week-view" spacing={4} sx={{ width: '100%' }}>
-        <Typography variant="h5">{formatWeek(currentDate)}</Typography>
+        <Typography variant="h5" data-testid="week-title">
+          {formatWeek(currentDate)}
+        </Typography>
         <TableContainer>
           <Table sx={{ tableLayout: 'fixed', width: '100%' }}>
             <TableHead>
@@ -201,6 +210,9 @@ function App() {
                           >
                             <Stack direction="row" spacing={1} alignItems="center">
                               {isNotified && <Notifications fontSize="small" />}
+                              {event.repeat.type !== 'none' && (
+                                <Repeat fontSize="small" data-testid="RepeatIcon" />
+                              )}
                               <Typography
                                 variant="caption"
                                 noWrap
@@ -227,7 +239,9 @@ function App() {
 
     return (
       <Stack data-testid="month-view" spacing={4} sx={{ width: '100%' }}>
-        <Typography variant="h5">{formatMonth(currentDate)}</Typography>
+        <Typography variant="h5" data-testid="month-title">
+          {formatMonth(currentDate)}
+        </Typography>
         <TableContainer>
           <Table sx={{ tableLayout: 'fixed', width: '100%' }}>
             <TableHead>
@@ -288,6 +302,9 @@ function App() {
                                 >
                                   <Stack direction="row" spacing={1} alignItems="center">
                                     {isNotified && <Notifications fontSize="small" />}
+                                    {event.repeat.type !== 'none' && (
+                                      <Repeat fontSize="small" data-testid="RepeatIcon" />
+                                    )}
                                     <Typography
                                       variant="caption"
                                       noWrap
@@ -323,6 +340,7 @@ function App() {
             <FormLabel htmlFor="title">제목</FormLabel>
             <TextField
               id="title"
+              data-testid="title-input"
               size="small"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -333,6 +351,7 @@ function App() {
             <FormLabel htmlFor="date">날짜</FormLabel>
             <TextField
               id="date"
+              data-testid="date-input"
               size="small"
               type="date"
               value={date}
@@ -346,6 +365,7 @@ function App() {
               <Tooltip title={startTimeError || ''} open={!!startTimeError} placement="top">
                 <TextField
                   id="start-time"
+                  data-testid="start-time-input"
                   size="small"
                   type="time"
                   value={startTime}
@@ -360,6 +380,7 @@ function App() {
               <Tooltip title={endTimeError || ''} open={!!endTimeError} placement="top">
                 <TextField
                   id="end-time"
+                  data-testid="end-time-input"
                   size="small"
                   type="time"
                   value={endTime}
@@ -375,6 +396,7 @@ function App() {
             <FormLabel htmlFor="description">설명</FormLabel>
             <TextField
               id="description"
+              data-testid="description-input"
               size="small"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -385,6 +407,7 @@ function App() {
             <FormLabel htmlFor="location">위치</FormLabel>
             <TextField
               id="location"
+              data-testid="location-input"
               size="small"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
@@ -413,6 +436,7 @@ function App() {
             <FormControlLabel
               control={
                 <Checkbox
+                  data-testid="repeat-checkbox"
                   checked={isRepeating}
                   onChange={(e) => setIsRepeating(e.target.checked)}
                 />
@@ -437,26 +461,37 @@ function App() {
             </Select>
           </FormControl>
 
-          {/* ! 반복은 8주차 과제에 포함됩니다. 구현하고 싶어도 참아주세요~ */}
-          {/* {isRepeating && (
+          {isRepeating && (
             <Stack spacing={2}>
               <FormControl fullWidth>
-                <FormLabel>반복 유형</FormLabel>
+                <FormLabel id="repeat-type-label">반복 유형</FormLabel>
                 <Select
+                  data-testid="repeat-type-select"
                   size="small"
                   value={repeatType}
                   onChange={(e) => setRepeatType(e.target.value as RepeatType)}
+                  aria-label="반복 유형"
                 >
-                  <MenuItem value="daily">매일</MenuItem>
-                  <MenuItem value="weekly">매주</MenuItem>
-                  <MenuItem value="monthly">매월</MenuItem>
-                  <MenuItem value="yearly">매년</MenuItem>
+                  <MenuItem value="daily" aria-label={`daily-option`}>
+                    매일
+                  </MenuItem>
+                  <MenuItem value="weekly" aria-label={`weekly-option`}>
+                    매주
+                  </MenuItem>
+                  <MenuItem value="monthly" aria-label={`monthly-option`}>
+                    매월
+                  </MenuItem>
+                  <MenuItem value="yearly" aria-label={`yearly-option`}>
+                    매년
+                  </MenuItem>
                 </Select>
               </FormControl>
               <Stack direction="row" spacing={2}>
                 <FormControl fullWidth>
-                  <FormLabel>반복 간격</FormLabel>
+                  <FormLabel htmlFor="repeat-interval">반복 간격</FormLabel>
                   <TextField
+                    id="repeat-interval"
+                    data-testid="repeat-interval-input"
                     size="small"
                     type="number"
                     value={repeatInterval}
@@ -465,8 +500,10 @@ function App() {
                   />
                 </FormControl>
                 <FormControl fullWidth>
-                  <FormLabel>반복 종료일</FormLabel>
+                  <FormLabel htmlFor="repeat-end-date">반복 종료일</FormLabel>
                   <TextField
+                    id="repeat-end-date"
+                    data-testid="repeat-end-date-input"
                     size="small"
                     type="date"
                     value={repeatEndDate}
@@ -475,7 +512,7 @@ function App() {
                 </FormControl>
               </Stack>
             </Stack>
-          )} */}
+          )}
 
           <Button
             data-testid="event-submit-button"
@@ -491,7 +528,11 @@ function App() {
           <Typography variant="h4">일정 보기</Typography>
 
           <Stack direction="row" spacing={2} justifyContent="space-between" alignItems="center">
-            <IconButton aria-label="Previous" onClick={() => navigate('prev')}>
+            <IconButton
+              data-testid="calendar-prev"
+              aria-label="Previous"
+              onClick={() => navigate('prev')}
+            >
               <ChevronLeft />
             </IconButton>
             <Select
@@ -507,7 +548,11 @@ function App() {
                 Month
               </MenuItem>
             </Select>
-            <IconButton aria-label="Next" onClick={() => navigate('next')}>
+            <IconButton
+              data-testid="calendar-next"
+              aria-label="Next"
+              onClick={() => navigate('next')}
+            >
               <ChevronRight />
             </IconButton>
           </Stack>
@@ -536,11 +581,23 @@ function App() {
             <Typography>검색 결과가 없습니다.</Typography>
           ) : (
             filteredEvents.map((event) => (
-              <Box key={event.id} sx={{ border: 1, borderRadius: 2, p: 3, width: '100%' }}>
+              <Box
+                data-testid="event-list-item"
+                key={event.id}
+                sx={{
+                  border: 1,
+                  borderRadius: 2,
+                  p: 3,
+                  width: '100%',
+                }}
+              >
                 <Stack direction="row" justifyContent="space-between">
                   <Stack>
                     <Stack direction="row" spacing={1} alignItems="center">
                       {notifiedEvents.includes(event.id) && <Notifications color="error" />}
+                      {event.repeat.type !== 'none' && (
+                        <Repeat data-testid="RepeatIcon" color="primary" />
+                      )}
                       <Typography
                         fontWeight={notifiedEvents.includes(event.id) ? 'bold' : 'normal'}
                         color={notifiedEvents.includes(event.id) ? 'error' : 'inherit'}
@@ -590,7 +647,11 @@ function App() {
         </Stack>
       </Stack>
 
-      <Dialog open={isOverlapDialogOpen} onClose={() => setIsOverlapDialogOpen(false)}>
+      <Dialog
+        data-testid="overlap-warning-modal"
+        open={isOverlapDialogOpen}
+        onClose={() => setIsOverlapDialogOpen(false)}
+      >
         <DialogTitle>일정 겹침 경고</DialogTitle>
         <DialogContent>
           <DialogContentText>
@@ -606,6 +667,7 @@ function App() {
         <DialogActions>
           <Button onClick={() => setIsOverlapDialogOpen(false)}>취소</Button>
           <Button
+            data-testid="overlap-warning-confirm-button"
             color="error"
             onClick={() => {
               setIsOverlapDialogOpen(false);
