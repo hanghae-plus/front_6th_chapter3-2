@@ -5,6 +5,8 @@ import {
   REPEAT_MAX_END_DATE,
   generateDailyDates,
   generateWeeklyDates,
+  generateMonthlyDates,
+  generateYearlyDates,
 } from '../../utils/repeatUtils.ts';
 
 describe('반복 일정 Unit Test', () => {
