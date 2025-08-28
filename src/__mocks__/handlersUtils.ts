@@ -92,3 +92,101 @@ export const setupMockHandlerDeletion = () => {
     })
   );
 };
+
+export const setupMockHandlerRepeatCreation = (initEvents = [] as Event[]) => {
+  const mockEvents: Event[] = [...initEvents];
+
+  server.use(
+    http.get('/api/events', () => {
+      return HttpResponse.json({ events: mockEvents });
+    }),
+    http.post('/api/events-list', async ({ request }) => {
+      const { events: newEvents } = (await request.json()) as { events: Event[] };
+      const repeatId = String(Date.now());
+
+      const processedEvents = newEvents.map((event, index) => {
+        const isRepeatEvent = event.repeat.type !== 'none';
+        return {
+          ...event,
+          id: String(mockEvents.length + index + 1),
+          repeat: {
+            ...event.repeat,
+            id: isRepeatEvent ? repeatId : undefined,
+          },
+        };
+      });
+
+      mockEvents.push(...processedEvents);
+      return HttpResponse.json(processedEvents, { status: 201 });
+    })
+  );
+};
+
+export const setupMockHandlerRepeatUpdating = (initEvents = [] as Event[]) => {
+  const mockEvents: Event[] = [...initEvents];
+
+  server.use(
+    http.get('/api/events', () => {
+      return HttpResponse.json({ events: mockEvents });
+    }),
+    // 반복 일정이지만 수정은 단일로
+    http.put('/api/events/:id', async ({ params, request }) => {
+      const { id } = params;
+      const updatedEvent = (await request.json()) as Event;
+      const index = mockEvents.findIndex((event) => event.id === id);
+
+      if (index !== -1) {
+        mockEvents[index] = { ...mockEvents[index], ...updatedEvent };
+        return HttpResponse.json(mockEvents[index]);
+      }
+      return new HttpResponse(null, { status: 404 });
+    }),
+
+    // 반복 일정을 일괄 수정 하지만 현재는 사용 안함
+    http.put('/api/events-list', async ({ request }) => {
+      const { events: updatedEvents } = (await request.json()) as { events: Event[] };
+
+      updatedEvents.forEach((updatedEvent) => {
+        const index = mockEvents.findIndex((event) => event.id === updatedEvent.id);
+        if (index !== -1) {
+          mockEvents[index] = { ...mockEvents[index], ...updatedEvent };
+        }
+      });
+
+      return HttpResponse.json(updatedEvents);
+    })
+  );
+};
+
+export const setupMockHandlerRepeatDeletion = (initEvents = [] as Event[]) => {
+  const mockEvents: Event[] = [...initEvents];
+
+  server.use(
+    http.get('/api/events', () => {
+      return HttpResponse.json({ events: mockEvents });
+    }),
+    // 반복 일정이지만 삭제는 단일로
+    http.delete('/api/events/:id', ({ params }) => {
+      const { id } = params;
+      const index = mockEvents.findIndex((event) => event.id === id);
+
+      if (index !== -1) {
+        mockEvents.splice(index, 1);
+      }
+      return new HttpResponse(null, { status: 204 });
+    }),
+
+    // 반복 일정을 일괄 삭제 하지만 현재는 사용 안함
+    http.delete('/api/events-list', async ({ request }) => {
+      const { eventIds } = (await request.json()) as { eventIds: string[] };
+
+      for (let i = mockEvents.length - 1; i >= 0; i--) {
+        if (eventIds.includes(mockEvents[i].id)) {
+          mockEvents.splice(i, 1);
+        }
+      }
+
+      return new HttpResponse(null, { status: 204 });
+    })
+  );
+};
