@@ -17,6 +17,12 @@ export const useEventForm = (initialEvent?: Event) => {
   const [repeatType, setRepeatType] = useState<RepeatType>(initialEvent?.repeat.type || 'none');
   const [repeatInterval, setRepeatInterval] = useState(initialEvent?.repeat.interval || 1);
   const [repeatEndDate, setRepeatEndDate] = useState(initialEvent?.repeat.endDate || '');
+  const [repeatEndCondition, setRepeatEndCondition] = useState<'default' | 'custom' | 'count'>(
+    'default'
+  );
+  const [repeatMaxOccurrences, setRepeatMaxOccurrences] = useState(
+    initialEvent?.repeat.maxOccurrences || 1
+  );
   const [notificationTime, setNotificationTime] = useState(initialEvent?.notificationTime || 10);
 
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
@@ -50,6 +56,8 @@ export const useEventForm = (initialEvent?: Event) => {
     setRepeatType('none');
     setRepeatInterval(1);
     setRepeatEndDate('');
+    setRepeatEndCondition('default');
+    setRepeatMaxOccurrences(1);
     setNotificationTime(10);
   };
 
@@ -66,6 +74,8 @@ export const useEventForm = (initialEvent?: Event) => {
     setRepeatType(event.repeat.type);
     setRepeatInterval(event.repeat.interval);
     setRepeatEndDate(event.repeat.endDate || '');
+    setRepeatEndCondition(event.repeat.endDate ? 'custom' : 'default');
+    setRepeatMaxOccurrences(event.repeat.maxOccurrences || 1);
     setNotificationTime(event.notificationTime);
   };
 
@@ -92,6 +102,10 @@ export const useEventForm = (initialEvent?: Event) => {
     setRepeatInterval,
     repeatEndDate,
     setRepeatEndDate,
+    repeatEndCondition,
+    setRepeatEndCondition,
+    repeatMaxOccurrences,
+    setRepeatMaxOccurrences,
     notificationTime,
     setNotificationTime,
     startTimeError,

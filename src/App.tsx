@@ -1,32 +1,36 @@
-import { Notifications, ChevronLeft, ChevronRight, Delete, Edit, Close } from '@mui/icons-material';
-import {
-  Alert,
-  AlertTitle,
-  Box,
-  Button,
-  Checkbox,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
-  FormControl,
-  FormControlLabel,
-  FormLabel,
-  IconButton,
-  MenuItem,
-  Select,
-  Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TextField,
-  Tooltip,
-  Typography,
-} from '@mui/material';
+import ChevronLeft from '@mui/icons-material/ChevronLeft';
+import ChevronRight from '@mui/icons-material/ChevronRight';
+import Close from '@mui/icons-material/Close';
+import Delete from '@mui/icons-material/Delete';
+import Edit from '@mui/icons-material/Edit';
+import Notifications from '@mui/icons-material/Notifications';
+import { Radio, RadioGroup } from '@mui/material';
+import Alert from '@mui/material/Alert';
+import AlertTitle from '@mui/material/AlertTitle';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Checkbox from '@mui/material/Checkbox';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogTitle from '@mui/material/DialogTitle';
+import FormControl from '@mui/material/FormControl';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import FormLabel from '@mui/material/FormLabel';
+import IconButton from '@mui/material/IconButton';
+import MenuItem from '@mui/material/MenuItem';
+import Select from '@mui/material/Select';
+import Stack from '@mui/material/Stack';
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
+import TableContainer from '@mui/material/TableContainer';
+import TableHead from '@mui/material/TableHead';
+import TableRow from '@mui/material/TableRow';
+import TextField from '@mui/material/TextField';
+import Tooltip from '@mui/material/Tooltip';
+import Typography from '@mui/material/Typography';
 import { useSnackbar } from 'notistack';
 import { useState } from 'react';
 
@@ -35,8 +39,7 @@ import { useEventForm } from './hooks/useEventForm.ts';
 import { useEventOperations } from './hooks/useEventOperations.ts';
 import { useNotifications } from './hooks/useNotifications.ts';
 import { useSearch } from './hooks/useSearch.ts';
-// import { Event, EventForm, RepeatType } from './types';
-import { Event, EventForm } from './types';
+import { Event, EventForm, RepeatType } from './types';
 import {
   formatDate,
   formatMonth,
@@ -77,11 +80,15 @@ function App() {
     isRepeating,
     setIsRepeating,
     repeatType,
-    // setRepeatType,
+    setRepeatType,
     repeatInterval,
-    // setRepeatInterval,
+    setRepeatInterval,
     repeatEndDate,
-    // setRepeatEndDate,
+    setRepeatEndDate,
+    repeatEndCondition,
+    setRepeatEndCondition,
+    repeatMaxOccurrences,
+    setRepeatMaxOccurrences,
     notificationTime,
     setNotificationTime,
     startTimeError,
@@ -184,23 +191,44 @@ function App() {
                       )
                       .map((event) => {
                         const isNotified = notifiedEvents.includes(event.id);
+                        const isRepeating = event.repeat.type !== 'none';
                         return (
                           <Box
                             key={event.id}
+                            data-repeating={isRepeating}
                             sx={{
                               p: 0.5,
                               my: 0.5,
-                              backgroundColor: isNotified ? '#ffebee' : '#f5f5f5',
+                              backgroundColor: isNotified
+                                ? '#ffebee'
+                                : isRepeating
+                                  ? '#e3f2fd'
+                                  : '#f5f5f5',
                               borderRadius: 1,
                               fontWeight: isNotified ? 'bold' : 'normal',
                               color: isNotified ? '#d32f2f' : 'inherit',
                               minHeight: '18px',
                               width: '100%',
                               overflow: 'hidden',
+                              borderLeft: isRepeating ? '4px solid #1976d2' : 'none',
+                              position: 'relative',
                             }}
                           >
                             <Stack direction="row" spacing={1} alignItems="center">
                               {isNotified && <Notifications fontSize="small" />}
+                              {isRepeating && (
+                                <Box
+                                  component="span"
+                                  sx={{
+                                    width: '8px',
+                                    height: '8px',
+                                    borderRadius: '50%',
+                                    backgroundColor: '#1976d2',
+                                    display: 'inline-block',
+                                    marginRight: '4px',
+                                  }}
+                                />
+                              )}
                               <Typography
                                 variant="caption"
                                 noWrap
@@ -271,23 +299,44 @@ function App() {
                             )}
                             {getEventsForDay(filteredEvents, day).map((event) => {
                               const isNotified = notifiedEvents.includes(event.id);
+                              const isRepeating = event.repeat.type !== 'none';
                               return (
                                 <Box
                                   key={event.id}
+                                  data-repeating={isRepeating}
                                   sx={{
                                     p: 0.5,
                                     my: 0.5,
-                                    backgroundColor: isNotified ? '#ffebee' : '#f5f5f5',
+                                    backgroundColor: isNotified
+                                      ? '#ffebee'
+                                      : isRepeating
+                                        ? '#e3f2fd'
+                                        : '#f5f5f5',
                                     borderRadius: 1,
                                     fontWeight: isNotified ? 'bold' : 'normal',
                                     color: isNotified ? '#d32f2f' : 'inherit',
                                     minHeight: '18px',
                                     width: '100%',
                                     overflow: 'hidden',
+                                    borderLeft: isRepeating ? '4px solid #1976d2' : 'none',
+                                    position: 'relative',
                                   }}
                                 >
                                   <Stack direction="row" spacing={1} alignItems="center">
                                     {isNotified && <Notifications fontSize="small" />}
+                                    {isRepeating && (
+                                      <Box
+                                        component="span"
+                                        sx={{
+                                          width: '8px',
+                                          height: '8px',
+                                          borderRadius: '50%',
+                                          backgroundColor: '#1976d2',
+                                          display: 'inline-block',
+                                          marginRight: '4px',
+                                        }}
+                                      />
+                                    )}
                                     <Typography
                                       variant="caption"
                                       noWrap
@@ -438,15 +487,17 @@ function App() {
           </FormControl>
 
           {/* ! 반복은 8주차 과제에 포함됩니다. 구현하고 싶어도 참아주세요~ */}
-          {/* {isRepeating && (
+          {isRepeating && (
             <Stack spacing={2}>
               <FormControl fullWidth>
-                <FormLabel>반복 유형</FormLabel>
+                <FormLabel htmlFor="repeat-type">반복 유형</FormLabel>
                 <Select
+                  id="repeat-type"
                   size="small"
-                  value={repeatType}
+                  value={isRepeating ? repeatType : 'none'}
                   onChange={(e) => setRepeatType(e.target.value as RepeatType)}
                 >
+                  <MenuItem value="none">없음</MenuItem>
                   <MenuItem value="daily">매일</MenuItem>
                   <MenuItem value="weekly">매주</MenuItem>
                   <MenuItem value="monthly">매월</MenuItem>
@@ -455,8 +506,9 @@ function App() {
               </FormControl>
               <Stack direction="row" spacing={2}>
                 <FormControl fullWidth>
-                  <FormLabel>반복 간격</FormLabel>
+                  <FormLabel htmlFor="repeat-interval">반복 간격</FormLabel>
                   <TextField
+                    id="repeat-interval"
                     size="small"
                     type="number"
                     value={repeatInterval}
@@ -474,8 +526,53 @@ function App() {
                   />
                 </FormControl>
               </Stack>
+
+              <FormControl fullWidth>
+                <FormLabel>반복 종료 조건</FormLabel>
+                <RadioGroup
+                  value={repeatEndCondition}
+                  onChange={(e) =>
+                    setRepeatEndCondition(e.target.value as 'default' | 'custom' | 'count')
+                  }
+                >
+                  <FormControlLabel
+                    value="default"
+                    control={<Radio />}
+                    label="기본 종료일 (2025-10-30)"
+                  />
+                  <FormControlLabel value="custom" control={<Radio />} label="사용자 지정 종료일" />
+                  <FormControlLabel value="count" control={<Radio />} label="특정 횟수만큼" />
+                </RadioGroup>
+              </FormControl>
+
+              {repeatEndCondition === 'custom' && (
+                <FormControl fullWidth>
+                  <FormLabel>사용자 지정 종료일</FormLabel>
+                  <TextField
+                    size="small"
+                    type="date"
+                    value={repeatEndDate}
+                    onChange={(e) => setRepeatEndDate(e.target.value)}
+                    helperText="종료일을 설정하지 않으면 기본 종료일(2025-10-30)이 적용됩니다"
+                  />
+                </FormControl>
+              )}
+
+              {repeatEndCondition === 'count' && (
+                <FormControl fullWidth>
+                  <FormLabel>반복 횟수</FormLabel>
+                  <TextField
+                    size="small"
+                    type="number"
+                    value={repeatMaxOccurrences}
+                    onChange={(e) => setRepeatMaxOccurrences(Number(e.target.value))}
+                    slotProps={{ htmlInput: { min: 1 } }}
+                    helperText="1 이상의 정수를 입력하세요"
+                  />
+                </FormControl>
+              )}
             </Stack>
-          )} */}
+          )}
 
           <Button
             data-testid="event-submit-button"
