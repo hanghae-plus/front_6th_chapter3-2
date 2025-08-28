@@ -23,3 +23,17 @@ export function findOverlappingEvents(newEvent: Event | EventForm, events: Event
     (event) => event.id !== (newEvent as Event).id && isOverlapping(event, newEvent)
   );
 }
+
+export function findOverlappingRepeatEvents(newEvents: (Event | EventForm)[], events: Event[]) {
+  const overlaps: Event[] = [];
+
+  newEvents.forEach((newEvent) => {
+    events.forEach((event) => {
+      if (event.id !== (newEvent as Event).id && isOverlapping(event, newEvent)) {
+        overlaps.push(event);
+      }
+    });
+  });
+
+  return overlaps;
+}
