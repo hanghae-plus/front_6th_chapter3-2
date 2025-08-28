@@ -1,4 +1,4 @@
-import { EventForm } from '../../types.ts';
+import { EventForm, Event } from '../../types.ts';
 import { formatDate } from '../../utils/dateUtils.ts';
 import {
   isLeapYear,
@@ -139,5 +139,56 @@ describe('반복 일정 Unit Test', () => {
     expect(singleEventForm.repeat.endDate).toBeUndefined();
     expect(singleEventForm.date).toBe(nonRepeatEventForm.date);
     expect(singleEventForm.title).toBe(nonRepeatEventForm.title);
+  });
+
+  it('단일 삭제 - 해당 id만 제거된다.', () => {
+    const event1: Event = {
+      id: '1',
+      title: '반복1-id1',
+      date: '2025-10-01',
+      startTime: '09:00',
+      endTime: '10:00',
+      description: '',
+      location: '',
+      category: 'default',
+      repeat: { type: 'weekly', interval: 1, endDate: '2025-10-22' },
+      notificationTime: 0,
+    };
+    const event2: Event = {
+      id: '2',
+      title: '반복1-id2',
+      date: '2025-10-08',
+      startTime: '09:00',
+      endTime: '10:00',
+      description: '',
+      location: '',
+      category: 'default',
+      repeat: { type: 'weekly', interval: 1, endDate: '2025-10-22' },
+      notificationTime: 0,
+    };
+    const event3: Event = {
+      id: '3',
+      title: '단일-id3',
+      date: '2025-10-05',
+      startTime: '13:00',
+      endTime: '14:00',
+      description: '',
+      location: '',
+      category: 'default',
+      repeat: { type: 'none', interval: 1 },
+      notificationTime: 0,
+    };
+
+    const original = [event1, event2, event3];
+    const next = removeEventById(original, '2');
+
+    // id가 2인 이벤트만 제거됨
+    expect(next).toHaveLength(2);
+    expect(next.some((event: Event) => event.id === '1')).toBe(true);
+    expect(next.some((event: Event) => event.id === '2')).toBe(false);
+    expect(next.some((event: Event) => event.id === '3')).toBe(true);
+
+    // 원본은 변하지 않는다
+    expect(original).toHaveLength(3);
   });
 });
