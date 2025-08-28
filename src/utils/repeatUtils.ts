@@ -1,5 +1,5 @@
 import { formatDate, getDaysInMonth } from './dateUtils.ts';
-import { EventForm } from '../types.ts';
+import { EventForm, RepeatInfo, RepeatType } from '../types.ts';
 
 export const REPEAT_MAX_END_DATE = new Date('2025-10-30T00:00:00');
 
@@ -129,10 +129,12 @@ export function buildRecurringEvents(eventFormData: EventForm): EventForm[] {
   }));
 }
 
-export function isRecurring() {
-  return true;
+export function isRecurring<T extends { repeat: { type: RepeatType } }>(target: T): boolean {
+  return target.repeat.type !== 'none';
 }
 
-export function toSingleEventForm() {
-  return {};
+// 반복일정에서 단일 일정으로 전환 시에 사용
+export function toSingleEventForm<T extends { repeat: RepeatInfo }>(target: T): T {
+  const singleRepeat: RepeatInfo = { type: 'none', interval: 1 };
+  return { ...target, repeat: singleRepeat };
 }
