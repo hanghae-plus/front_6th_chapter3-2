@@ -35,8 +35,7 @@ import { useEventForm } from './hooks/useEventForm.ts';
 import { useEventOperations } from './hooks/useEventOperations.ts';
 import { useNotifications } from './hooks/useNotifications.ts';
 import { useSearch } from './hooks/useSearch.ts';
-// import { Event, EventForm, RepeatType } from './types';
-import { Event, EventForm } from './types';
+import { Event, EventForm, RepeatType } from './types';
 import {
   formatDate,
   formatMonth,
@@ -47,6 +46,9 @@ import {
 } from './utils/dateUtils';
 import { findOverlappingEvents } from './utils/eventOverlap';
 import { getTimeErrorMessage } from './utils/timeValidation';
+import { expandRecurringEvent } from './utils/expandRecurringEvent';
+import { addRepeatIconIfNeeded } from './utils/addRepeatIconIfNeeded';
+import { RepeatIcon } from './components/RepeatIcon';
 
 const categories = ['업무', '개인', '가족', '기타'];
 
@@ -77,11 +79,11 @@ function App() {
     isRepeating,
     setIsRepeating,
     repeatType,
-    // setRepeatType,
+    setRepeatType,
     repeatInterval,
-    // setRepeatInterval,
+    setRepeatInterval,
     repeatEndDate,
-    // setRepeatEndDate,
+    setRepeatEndDate,
     notificationTime,
     setNotificationTime,
     startTimeError,
@@ -118,8 +120,19 @@ function App() {
       return;
     }
 
+    // 반복 일정인 경우 종료일 유효성 검사
+    if (isRepeating && repeatEndDate) {
+      const startDate = new Date(date);
+      const endDate = new Date(repeatEndDate);
+
+      if (startDate >= endDate) {
+        enqueueSnackbar('종료일은 시작일 이후여야 합니다.', { variant: 'error' });
+        return;
+      }
+    }
+
     const eventData: Event | EventForm = {
-      id: editingEvent ? editingEvent.id : undefined,
+      id: editingEvent?.id,
       title,
       date,
       startTime,
@@ -135,6 +148,55 @@ function App() {
       notificationTime,
     };
 
+    console.log(eventData, 'eventData...');
+
+    // 반복 일정인 경우 확장된 이벤트들을 생성
+    if (isRepeating && repeatType !== 'none') {
+      try {
+        console.log('Creating recurring event with:', {
+          startDate: date,
+          endDate: repeatEndDate,
+          repeatType,
+          interval: repeatInterval,
+        });
+
+        const expandedEvents = expandRecurringEvent(eventData);
+        console.log('Expanded events:', expandedEvents);
+
+        // addRepeatIconIfNeeded를 사용하여 반복 아이콘과 체크박스 추가
+        const eventsWithIcons = addRepeatIconIfNeeded(eventData);
+        console.log('Events with icons:', eventsWithIcons);
+
+        // 편집 모드인 경우 기존 일정 삭제
+        if (editingEvent) {
+          await deleteEvent(editingEvent.id as string);
+        }
+
+        // 각 확장된 이벤트를 개별적으로 저장
+        for (const expandedEvent of eventsWithIcons) {
+          const overlapping = findOverlappingEvents(expandedEvent, events);
+          if (overlapping.length > 0) {
+            setOverlappingEvents(overlapping);
+            setIsOverlapDialogOpen(true);
+            return;
+          }
+
+          await saveEvent(expandedEvent);
+        }
+        resetForm();
+        enqueueSnackbar(
+          editingEvent ? '반복 일정이 수정되었습니다.' : '반복 일정이 추가되었습니다.',
+          { variant: 'success' }
+        );
+        return;
+      } catch (error) {
+        console.error('Error expanding recurring event:', error);
+        enqueueSnackbar('반복 일정 생성 중 오류가 발생했습니다.', { variant: 'error' });
+        return;
+      }
+    }
+
+    // 일반 일정인 경우 (반복 일정 체크박스가 해제된 경우 포함)
     const overlapping = findOverlappingEvents(eventData, events);
     if (overlapping.length > 0) {
       setOverlappingEvents(overlapping);
@@ -142,6 +204,9 @@ function App() {
     } else {
       await saveEvent(eventData);
       resetForm();
+      enqueueSnackbar(editingEvent ? '일정이 수정되었습니다.' : '일정이 추가되었습니다.', {
+        variant: 'success',
+      });
     }
   };
 
@@ -183,7 +248,7 @@ function App() {
                         (event) => new Date(event.date).toDateString() === date.toDateString()
                       )
                       .map((event) => {
-                        const isNotified = notifiedEvents.includes(event.id);
+                        const isNotified = notifiedEvents.includes(event.id as string);
                         return (
                           <Box
                             key={event.id}
@@ -270,7 +335,7 @@ function App() {
                               </Typography>
                             )}
                             {getEventsForDay(filteredEvents, day).map((event) => {
-                              const isNotified = notifiedEvents.includes(event.id);
+                              const isNotified = notifiedEvents.includes(event.id as string);
                               return (
                                 <Box
                                   key={event.id}
@@ -288,6 +353,13 @@ function App() {
                                 >
                                   <Stack direction="row" spacing={1} alignItems="center">
                                     {isNotified && <Notifications fontSize="small" />}
+                                    {event.repeat?.type && event.repeat.type !== 'none' && (
+                                      <RepeatIcon
+                                        data-testid="repeat-icon"
+                                        size={12}
+                                        color="#666"
+                                      />
+                                    )}
                                     <Typography
                                       variant="caption"
                                       noWrap
@@ -414,6 +486,7 @@ function App() {
               control={
                 <Checkbox
                   checked={isRepeating}
+                  data-testid="repeat-type-select"
                   onChange={(e) => setIsRepeating(e.target.checked)}
                 />
               }
@@ -438,25 +511,35 @@ function App() {
           </FormControl>
 
           {/* ! 반복은 8주차 과제에 포함됩니다. 구현하고 싶어도 참아주세요~ */}
-          {/* {isRepeating && (
+          {isRepeating && (
             <Stack spacing={2}>
               <FormControl fullWidth>
                 <FormLabel>반복 유형</FormLabel>
                 <Select
+                  data-testid="repeat-type-select"
                   size="small"
                   value={repeatType}
                   onChange={(e) => setRepeatType(e.target.value as RepeatType)}
                 >
-                  <MenuItem value="daily">매일</MenuItem>
-                  <MenuItem value="weekly">매주</MenuItem>
-                  <MenuItem value="monthly">매월</MenuItem>
-                  <MenuItem value="yearly">매년</MenuItem>
+                  <MenuItem data-testid="repeat-type-daily" value="daily">
+                    매일
+                  </MenuItem>
+                  <MenuItem data-testid="repeat-type-weekly" value="weekly">
+                    매주
+                  </MenuItem>
+                  <MenuItem data-testid="repeat-type-monthly" value="monthly">
+                    매월
+                  </MenuItem>
+                  <MenuItem data-testid="repeat-type-yearly" value="yearly">
+                    매년
+                  </MenuItem>
                 </Select>
               </FormControl>
               <Stack direction="row" spacing={2}>
                 <FormControl fullWidth>
                   <FormLabel>반복 간격</FormLabel>
                   <TextField
+                    data-testid="repeat-interval-input"
                     size="small"
                     type="number"
                     value={repeatInterval}
@@ -467,6 +550,7 @@ function App() {
                 <FormControl fullWidth>
                   <FormLabel>반복 종료일</FormLabel>
                   <TextField
+                    data-testid="repeat-end-date-input"
                     size="small"
                     type="date"
                     value={repeatEndDate}
@@ -475,7 +559,7 @@ function App() {
                 </FormControl>
               </Stack>
             </Stack>
-          )} */}
+          )}
 
           <Button
             data-testid="event-submit-button"
@@ -540,10 +624,15 @@ function App() {
                 <Stack direction="row" justifyContent="space-between">
                   <Stack>
                     <Stack direction="row" spacing={1} alignItems="center">
-                      {notifiedEvents.includes(event.id) && <Notifications color="error" />}
+                      {notifiedEvents.includes(event.id as string) && (
+                        <Notifications color="error" />
+                      )}
+                      {event.repeat?.type && event.repeat.type !== 'none' && (
+                        <RepeatIcon data-testid="repeat-icon" size={14} color="#666" />
+                      )}
                       <Typography
-                        fontWeight={notifiedEvents.includes(event.id) ? 'bold' : 'normal'}
-                        color={notifiedEvents.includes(event.id) ? 'error' : 'inherit'}
+                        fontWeight={notifiedEvents.includes(event.id as string) ? 'bold' : 'normal'}
+                        color={notifiedEvents.includes(event.id as string) ? 'error' : 'inherit'}
                       >
                         {event.title}
                       </Typography>
@@ -579,7 +668,10 @@ function App() {
                     <IconButton aria-label="Edit event" onClick={() => editEvent(event)}>
                       <Edit />
                     </IconButton>
-                    <IconButton aria-label="Delete event" onClick={() => deleteEvent(event.id)}>
+                    <IconButton
+                      aria-label="Delete event"
+                      onClick={() => deleteEvent(event.id as string)}
+                    >
                       <Delete />
                     </IconButton>
                   </Stack>
@@ -593,19 +685,18 @@ function App() {
       <Dialog open={isOverlapDialogOpen} onClose={() => setIsOverlapDialogOpen(false)}>
         <DialogTitle>일정 겹침 경고</DialogTitle>
         <DialogContent>
-          <DialogContentText>
-            다음 일정과 겹칩니다:
-            {overlappingEvents.map((event) => (
-              <Typography key={event.id}>
-                {event.title} ({event.date} {event.startTime}-{event.endTime})
-              </Typography>
-            ))}
-            계속 진행하시겠습니까?
-          </DialogContentText>
+          <DialogContentText>다음 일정과 겹칩니다:</DialogContentText>
+          {overlappingEvents.map((event) => (
+            <Typography key={event.id} sx={{ mb: 1 }}>
+              {event.title} ({event.date} {event.startTime}-{event.endTime})
+            </Typography>
+          ))}
+          <DialogContentText sx={{ mt: 2 }}>계속 진행하시겠습니까?</DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setIsOverlapDialogOpen(false)}>취소</Button>
           <Button
+            data-testid="overlap-continue-button"
             color="error"
             onClick={() => {
               setIsOverlapDialogOpen(false);
