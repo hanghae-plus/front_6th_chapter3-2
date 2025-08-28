@@ -1,5 +1,11 @@
 import { formatDate } from '../../utils/dateUtils.ts';
-import { isLeapYear, fixEndDate, REPEAT_MAX_END_DATE } from '../../utils/repeatUtils.ts';
+import {
+  isLeapYear,
+  fixEndDate,
+  REPEAT_MAX_END_DATE,
+  generateDailyDates,
+  generateWeeklyDates,
+} from '../../utils/repeatUtils.ts';
 
 describe('반복 일정 Unit Test', () => {
   it('해가 윤년이라면 true를 반환한다.', () => {
@@ -16,17 +22,17 @@ describe('반복 일정 Unit Test', () => {
     expect(formatDate(REPEAT_MAX_END_DATE)).toBe('2025-10-30');
   });
 
-  it('일정 날짜 구하기 - 일 단위로 날짜를 반환한다. ', () => {
-    const startDate = new Date('2025-10-28');
-    const endDate = formatDate(fixEndDate('2025-10-30'));
-    const dates = generateDailyDates(startDate, endDate, 1);
+  it('일정 날짜 구하기 - 일 단위로 날짜를 반환한다.', () => {
+    const startDate = '2025-10-28';
+    const endDate = '2025-10-30';
+    const dates = generateDailyDates(startDate, endDate);
     expect(dates).toEqual(['2025-10-28', '2025-10-29', '2025-10-30']);
   });
 
   it('일정 날짜 구하기 - 주 단위로 날짜를 반환한다.', () => {
-    const startDate = new Date('2025-10-10');
-    const endDate = formatDate(fixEndDate('2025-10-30'));
-    const dates = generateWeeklyDates(startDate, endDate, 1);
+    const startDate = '2025-10-10';
+    const endDate = '2025-10-30';
+    const dates = generateWeeklyDates(startDate, endDate);
     expect(dates).toEqual(['2025-10-10', '2025-10-17', '2025-10-24']);
   });
 });

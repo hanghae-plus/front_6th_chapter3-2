@@ -1,3 +1,5 @@
+import { formatDate } from './dateUtils.ts';
+
 export const REPEAT_MAX_END_DATE = new Date('2025-10-30T00:00:00');
 
 export function isLeapYear(year: number): boolean {
@@ -9,10 +11,26 @@ export function fixEndDate(endDate?: string): Date {
   return target > REPEAT_MAX_END_DATE ? REPEAT_MAX_END_DATE : target;
 }
 
-export function generateDailyDates(start: Date, end: Date) {
-  return ['2025-10-10', '2025-10-17', '2025-10-24'];
+export function generateDailyDates(start: string, end: string): string[] {
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  const step = 1;
+  const outputDates: string[] = [];
+
+  for (let d = startDate; d <= endDate; d.setDate(d.getDate() + step)) {
+    outputDates.push(formatDate(new Date(d)));
+  }
+  return outputDates;
 }
 
-export function generateWeeklyDates(start: Date, end: Date ){
-  return ['2025-10-10', '2025-10-17', '2025-10-24'];
+export function generateWeeklyDates(start: string, end: string): string[] {
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  const step = 7;
+  const outputDates: string[] = [];
+
+  for (let d = startDate; d <= endDate; d.setDate(d.getDate() + step)) {
+    outputDates.push(formatDate(new Date(d)));
+  }
+  return outputDates;
 }
