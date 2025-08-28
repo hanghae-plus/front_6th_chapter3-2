@@ -38,6 +38,10 @@ export const useEventForm = (initialEvent?: Event) => {
     setTimeError(getTimeErrorMessage(startTime, newEndTime));
   };
 
+  const handleIsRepeatingChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setIsRepeating(e.target.checked);
+  };
+
   const resetForm = () => {
     setTitle('');
     setDate('');
@@ -51,6 +55,7 @@ export const useEventForm = (initialEvent?: Event) => {
     setRepeatInterval(1);
     setRepeatEndDate('');
     setNotificationTime(10);
+    setEditingEvent(null);
   };
 
   const editEvent = (event: Event) => {
@@ -59,14 +64,18 @@ export const useEventForm = (initialEvent?: Event) => {
     setDate(event.date);
     setStartTime(event.startTime);
     setEndTime(event.endTime);
-    setDescription(event.description);
-    setLocation(event.location);
+    setDescription(event.description || '');
+    setLocation(event.location || '');
     setCategory(event.category);
-    setIsRepeating(event.repeat.type !== 'none');
-    setRepeatType(event.repeat.type);
-    setRepeatInterval(event.repeat.interval);
-    setRepeatEndDate(event.repeat.endDate || '');
-    setNotificationTime(event.notificationTime);
+
+    // 반복 설정을 올바르게 처리
+    const isEventRepeating = event.repeat.type !== 'none';
+    setIsRepeating(isEventRepeating);
+    setRepeatType(isEventRepeating ? event.repeat.type : 'none');
+    setRepeatInterval(isEventRepeating ? event.repeat.interval : 1);
+    setRepeatEndDate(isEventRepeating ? event.repeat.endDate || '' : '');
+
+    setNotificationTime(event.notificationTime || 10);
   };
 
   return {
@@ -85,7 +94,7 @@ export const useEventForm = (initialEvent?: Event) => {
     category,
     setCategory,
     isRepeating,
-    setIsRepeating,
+    handleIsRepeatingChange,
     repeatType,
     setRepeatType,
     repeatInterval,

@@ -56,3 +56,25 @@ export function getFilteredEvents(
 
   return searchedEvents;
 }
+
+/**
+ * 반복 일정을 그룹화하는 함수
+ * @param events 이벤트 배열
+ * @returns 그룹화된 이벤트 객체 (키: 그룹 식별자, 값: 이벤트 배열)
+ */
+export const groupRepeatingEvents = (events: Event[]) => {
+  const grouped: { [key: string]: Event[] } = {};
+  events.forEach((event) => {
+    if (event.repeat.type !== 'none') {
+      const key = `${event.title}-${event.repeat.type}-${event.repeat.interval}-${event.repeat.endDate}`;
+      if (!grouped[key]) {
+        grouped[key] = [];
+      }
+      grouped[key].push(event);
+    } else {
+      const key = event.id;
+      grouped[key] = [event];
+    }
+  });
+  return grouped;
+};

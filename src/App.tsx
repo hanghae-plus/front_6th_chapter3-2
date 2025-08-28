@@ -30,13 +30,13 @@ import {
 import { useSnackbar } from 'notistack';
 import { useState } from 'react';
 
+import RepeatIcon from './components/icons.tsx';
 import { useCalendarView } from './hooks/useCalendarView.ts';
 import { useEventForm } from './hooks/useEventForm.ts';
 import { useEventOperations } from './hooks/useEventOperations.ts';
 import { useNotifications } from './hooks/useNotifications.ts';
 import { useSearch } from './hooks/useSearch.ts';
-// import { Event, EventForm, RepeatType } from './types';
-import { Event, EventForm } from './types';
+import { Event, EventForm, RepeatType } from './types';
 import {
   formatDate,
   formatMonth,
@@ -46,6 +46,7 @@ import {
   getWeeksAtMonth,
 } from './utils/dateUtils';
 import { findOverlappingEvents } from './utils/eventOverlap';
+import { groupRepeatingEvents } from './utils/eventUtils';
 import { getTimeErrorMessage } from './utils/timeValidation';
 
 const categories = ['업무', '개인', '가족', '기타'];
@@ -75,13 +76,13 @@ function App() {
     category,
     setCategory,
     isRepeating,
-    setIsRepeating,
+    handleIsRepeatingChange,
     repeatType,
-    // setRepeatType,
+    setRepeatType,
     repeatInterval,
-    // setRepeatInterval,
+    setRepeatInterval,
     repeatEndDate,
-    // setRepeatEndDate,
+    setRepeatEndDate,
     notificationTime,
     setNotificationTime,
     startTimeError,
@@ -129,8 +130,8 @@ function App() {
       category,
       repeat: {
         type: isRepeating ? repeatType : 'none',
-        interval: repeatInterval,
-        endDate: repeatEndDate || undefined,
+        interval: isRepeating ? repeatInterval : 1,
+        endDate: isRepeating ? repeatEndDate || undefined : undefined,
       },
       notificationTime,
     };
@@ -184,6 +185,8 @@ function App() {
                       )
                       .map((event) => {
                         const isNotified = notifiedEvents.includes(event.id);
+                        const isRepeating = event.repeat.type !== 'none';
+
                         return (
                           <Box
                             key={event.id}
@@ -206,6 +209,7 @@ function App() {
                                 noWrap
                                 sx={{ fontSize: '0.75rem', lineHeight: 1.2 }}
                               >
+                                {isRepeating && <RepeatIcon />}
                                 {event.title}
                               </Typography>
                             </Stack>
@@ -271,6 +275,8 @@ function App() {
                             )}
                             {getEventsForDay(filteredEvents, day).map((event) => {
                               const isNotified = notifiedEvents.includes(event.id);
+                              const isRepeating = event.repeat.type !== 'none';
+
                               return (
                                 <Box
                                   key={event.id}
@@ -293,6 +299,7 @@ function App() {
                                       noWrap
                                       sx={{ fontSize: '0.75rem', lineHeight: 1.2 }}
                                     >
+                                      {isRepeating && <RepeatIcon />}
                                       {event.title}
                                     </Typography>
                                   </Stack>
@@ -411,12 +418,7 @@ function App() {
 
           <FormControl>
             <FormControlLabel
-              control={
-                <Checkbox
-                  checked={isRepeating}
-                  onChange={(e) => setIsRepeating(e.target.checked)}
-                />
-              }
+              control={<Checkbox checked={isRepeating} onChange={handleIsRepeatingChange} />}
               label="반복 일정"
             />
           </FormControl>
@@ -438,19 +440,28 @@ function App() {
           </FormControl>
 
           {/* ! 반복은 8주차 과제에 포함됩니다. 구현하고 싶어도 참아주세요~ */}
-          {/* {isRepeating && (
+          {isRepeating && (
             <Stack spacing={2}>
               <FormControl fullWidth>
                 <FormLabel>반복 유형</FormLabel>
                 <Select
                   size="small"
-                  value={repeatType}
+                  value={isRepeating ? repeatType : 'none'}
                   onChange={(e) => setRepeatType(e.target.value as RepeatType)}
+                  aria-label="반복 유형"
                 >
-                  <MenuItem value="daily">매일</MenuItem>
-                  <MenuItem value="weekly">매주</MenuItem>
-                  <MenuItem value="monthly">매월</MenuItem>
-                  <MenuItem value="yearly">매년</MenuItem>
+                  <MenuItem value="daily" aria-label="daily-option">
+                    매일
+                  </MenuItem>
+                  <MenuItem value="weekly" aria-label="weekly-option">
+                    매주
+                  </MenuItem>
+                  <MenuItem value="monthly" aria-label="monthly-option">
+                    매월
+                  </MenuItem>
+                  <MenuItem value="yearly" aria-label="yearly-option">
+                    매년
+                  </MenuItem>
                 </Select>
               </FormControl>
               <Stack direction="row" spacing={2}>
@@ -475,7 +486,7 @@ function App() {
                 </FormControl>
               </Stack>
             </Stack>
-          )} */}
+          )}
 
           <Button
             data-testid="event-submit-button"
@@ -535,57 +546,77 @@ function App() {
           {filteredEvents.length === 0 ? (
             <Typography>검색 결과가 없습니다.</Typography>
           ) : (
-            filteredEvents.map((event) => (
-              <Box key={event.id} sx={{ border: 1, borderRadius: 2, p: 3, width: '100%' }}>
-                <Stack direction="row" justifyContent="space-between">
-                  <Stack>
-                    <Stack direction="row" spacing={1} alignItems="center">
-                      {notifiedEvents.includes(event.id) && <Notifications color="error" />}
-                      <Typography
-                        fontWeight={notifiedEvents.includes(event.id) ? 'bold' : 'normal'}
-                        color={notifiedEvents.includes(event.id) ? 'error' : 'inherit'}
-                      >
-                        {event.title}
-                      </Typography>
+            (() => {
+              const groupedEvents = groupRepeatingEvents(filteredEvents);
+              return Object.entries(groupedEvents).map(([key, events]) => {
+                const representativeEvent = events[0]; // 대표 이벤트
+
+                return (
+                  <Box key={key} sx={{ border: 1, borderRadius: 2, p: 3, width: '100%' }}>
+                    <Stack direction="row" justifyContent="space-between">
+                      <Stack>
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          {notifiedEvents.includes(representativeEvent.id) && (
+                            <Notifications color="error" />
+                          )}
+                          <Typography
+                            fontWeight={
+                              notifiedEvents.includes(representativeEvent.id) ? 'bold' : 'normal'
+                            }
+                            color={
+                              notifiedEvents.includes(representativeEvent.id) ? 'error' : 'inherit'
+                            }
+                          >
+                            {representativeEvent.title}
+                          </Typography>
+                        </Stack>
+                        <Typography>{representativeEvent.date}</Typography>
+                        <Typography>
+                          {representativeEvent.startTime} - {representativeEvent.endTime}
+                        </Typography>
+                        <Typography>{representativeEvent.description}</Typography>
+                        <Typography>{representativeEvent.location}</Typography>
+                        <Typography>카테고리: {representativeEvent.category}</Typography>
+                        {representativeEvent.repeat.type !== 'none' && (
+                          <Typography>
+                            반복: {representativeEvent.repeat.interval}
+                            {representativeEvent.repeat.type === 'daily' && '일'}
+                            {representativeEvent.repeat.type === 'weekly' && '주'}
+                            {representativeEvent.repeat.type === 'monthly' && '월'}
+                            {representativeEvent.repeat.type === 'yearly' && '년'}
+                            마다
+                            {representativeEvent.repeat.endDate &&
+                              ` (종료: ${representativeEvent.repeat.endDate})`}
+                          </Typography>
+                        )}
+                        <Typography>
+                          알림:{' '}
+                          {
+                            notificationOptions.find(
+                              (option) => option.value === representativeEvent.notificationTime
+                            )?.label
+                          }
+                        </Typography>
+                      </Stack>
+                      <Stack>
+                        <IconButton
+                          aria-label="Edit event"
+                          onClick={() => editEvent(representativeEvent)}
+                        >
+                          <Edit />
+                        </IconButton>
+                        <IconButton
+                          aria-label="Delete event"
+                          onClick={() => deleteEvent(representativeEvent.id)}
+                        >
+                          <Delete />
+                        </IconButton>
+                      </Stack>
                     </Stack>
-                    <Typography>{event.date}</Typography>
-                    <Typography>
-                      {event.startTime} - {event.endTime}
-                    </Typography>
-                    <Typography>{event.description}</Typography>
-                    <Typography>{event.location}</Typography>
-                    <Typography>카테고리: {event.category}</Typography>
-                    {event.repeat.type !== 'none' && (
-                      <Typography>
-                        반복: {event.repeat.interval}
-                        {event.repeat.type === 'daily' && '일'}
-                        {event.repeat.type === 'weekly' && '주'}
-                        {event.repeat.type === 'monthly' && '월'}
-                        {event.repeat.type === 'yearly' && '년'}
-                        마다
-                        {event.repeat.endDate && ` (종료: ${event.repeat.endDate})`}
-                      </Typography>
-                    )}
-                    <Typography>
-                      알림:{' '}
-                      {
-                        notificationOptions.find(
-                          (option) => option.value === event.notificationTime
-                        )?.label
-                      }
-                    </Typography>
-                  </Stack>
-                  <Stack>
-                    <IconButton aria-label="Edit event" onClick={() => editEvent(event)}>
-                      <Edit />
-                    </IconButton>
-                    <IconButton aria-label="Delete event" onClick={() => deleteEvent(event.id)}>
-                      <Delete />
-                    </IconButton>
-                  </Stack>
-                </Stack>
-              </Box>
-            ))
+                  </Box>
+                );
+              });
+            })()
           )}
         </Stack>
       </Stack>

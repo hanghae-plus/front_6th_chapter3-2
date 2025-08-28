@@ -2,6 +2,7 @@ import { useSnackbar } from 'notistack';
 import { useEffect, useState } from 'react';
 
 import { Event, EventForm } from '../types';
+import { generateRecurringDates } from '../utils/repeatUtils';
 
 export const useEventOperations = (editing: boolean, onSave?: () => void) => {
   const [events, setEvents] = useState<Event[]>([]);
@@ -25,17 +26,57 @@ export const useEventOperations = (editing: boolean, onSave?: () => void) => {
     try {
       let response;
       if (editing) {
-        response = await fetch(`/api/events/${(eventData as Event).id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(eventData),
-        });
+        const originalEvent = events.find((e) => e.id === (eventData as Event).id);
+        const isRepeatingRemoved =
+          originalEvent?.repeat?.type !== 'none' &&
+          (eventData as EventForm).repeat?.type === 'none';
+
+        if (isRepeatingRemoved && originalEvent) {
+          // 반복 설정이 해제된 경우: 현재 일정만 단일 일정으로 변경
+          // 나머지 반복 일정들은 그대로 유지
+          response = await fetch(`/api/events/${originalEvent.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(eventData),
+          });
+        } else {
+          // 일반적인 수정
+          response = await fetch(`/api/events/${(eventData as Event).id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(eventData),
+          });
+        }
       } else {
-        response = await fetch('/api/events', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(eventData),
-        });
+        // 반복일정이 있으면 events-list로, 없으면 events로
+        const isRepeating = (eventData as EventForm).repeat?.type !== 'none';
+        const endpoint = isRepeating ? '/api/events-list' : '/api/events';
+
+        if (isRepeating) {
+          // 반복일정: 반복 날짜들을 생성해서 배열로 전송
+          const dates = generateRecurringDates(eventData as Event);
+          if (Array.isArray(dates)) {
+            const repeatEvents = dates.map((date: string) => ({
+              ...eventData,
+              date,
+            }));
+
+            response = await fetch(endpoint, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ events: repeatEvents }),
+            });
+          } else {
+            throw new Error('Failed to generate recurring dates');
+          }
+        } else {
+          // 일반 일정: 단일 객체로 전송
+          response = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(eventData),
+          });
+        }
       }
 
       if (!response.ok) {
