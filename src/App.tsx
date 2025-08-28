@@ -1,4 +1,12 @@
-import { Notifications, ChevronLeft, ChevronRight, Delete, Edit, Close } from '@mui/icons-material';
+import {
+  Notifications,
+  ChevronLeft,
+  ChevronRight,
+  Delete,
+  Edit,
+  Close,
+  Repeat,
+} from '@mui/icons-material';
 import {
   Alert,
   AlertTitle,
@@ -35,8 +43,7 @@ import { useEventForm } from './hooks/useEventForm.ts';
 import { useEventOperations } from './hooks/useEventOperations.ts';
 import { useNotifications } from './hooks/useNotifications.ts';
 import { useSearch } from './hooks/useSearch.ts';
-// import { Event, EventForm, RepeatType } from './types';
-import { Event, EventForm } from './types';
+import { Event, EventForm, RepeatType } from './types';
 import {
   formatDate,
   formatMonth,
@@ -77,11 +84,11 @@ function App() {
     isRepeating,
     setIsRepeating,
     repeatType,
-    // setRepeatType,
+    setRepeatType,
     repeatInterval,
-    // setRepeatInterval,
+    setRepeatInterval,
     repeatEndDate,
-    // setRepeatEndDate,
+    setRepeatEndDate,
     notificationTime,
     setNotificationTime,
     startTimeError,
@@ -201,6 +208,13 @@ function App() {
                           >
                             <Stack direction="row" spacing={1} alignItems="center">
                               {isNotified && <Notifications fontSize="small" />}
+                              {event.repeat.type !== 'none' && (
+                                <Repeat
+                                  fontSize="small"
+                                  sx={{ color: '#1976d2' }}
+                                  data-testid="RepeatIcon"
+                                />
+                              )}
                               <Typography
                                 variant="caption"
                                 noWrap
@@ -288,6 +302,13 @@ function App() {
                                 >
                                   <Stack direction="row" spacing={1} alignItems="center">
                                     {isNotified && <Notifications fontSize="small" />}
+                                    {event.repeat.type !== 'none' && (
+                                      <Repeat
+                                        fontSize="small"
+                                        sx={{ color: '#1976d2' }}
+                                        data-testid="RepeatIcon"
+                                      />
+                                    )}
                                     <Typography
                                       variant="caption"
                                       noWrap
@@ -438,7 +459,7 @@ function App() {
           </FormControl>
 
           {/* ! 반복은 8주차 과제에 포함됩니다. 구현하고 싶어도 참아주세요~ */}
-          {/* {isRepeating && (
+          {isRepeating && (
             <Stack spacing={2}>
               <FormControl fullWidth>
                 <FormLabel>반복 유형</FormLabel>
@@ -475,7 +496,7 @@ function App() {
                 </FormControl>
               </Stack>
             </Stack>
-          )} */}
+          )}
 
           <Button
             data-testid="event-submit-button"
@@ -556,15 +577,18 @@ function App() {
                     <Typography>{event.location}</Typography>
                     <Typography>카테고리: {event.category}</Typography>
                     {event.repeat.type !== 'none' && (
-                      <Typography>
-                        반복: {event.repeat.interval}
-                        {event.repeat.type === 'daily' && '일'}
-                        {event.repeat.type === 'weekly' && '주'}
-                        {event.repeat.type === 'monthly' && '월'}
-                        {event.repeat.type === 'yearly' && '년'}
-                        마다
-                        {event.repeat.endDate && ` (종료: ${event.repeat.endDate})`}
-                      </Typography>
+                      <Stack direction="row" spacing={0.5} alignItems="center">
+                        <Repeat fontSize="small" />
+                        <Typography>
+                          반복: {event.repeat.interval}
+                          {event.repeat.type === 'daily' && '일'}
+                          {event.repeat.type === 'weekly' && '주'}
+                          {event.repeat.type === 'monthly' && '월'}
+                          {event.repeat.type === 'yearly' && '년'}
+                          마다
+                          {event.repeat.endDate && ` (종료: ${event.repeat.endDate})`}
+                        </Typography>
+                      </Stack>
                     )}
                     <Typography>
                       알림:{' '}
