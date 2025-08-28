@@ -10,6 +10,7 @@ import {
   generateYearlyDates,
   buildRecurringEvents,
 } from '../../utils/repeatUtils.ts';
+import { makeEventForm } from '../utils.ts';
 
 describe('반복 일정 Unit Test', () => {
   it('해가 윤년이라면 true를 반환한다.', () => {
@@ -94,5 +95,47 @@ describe('반복 일정 Unit Test', () => {
     expect(events[0].endTime).toBe('10:00');
     // 반복 타입은 유지 (아이콘 표시용)
     expect(events.every((event: EventForm) => event.repeat?.type === 'daily')).toBe(true);
+  });
+
+  it('단일 수정/아이콘 - 반복 해제 시 반복 아이콘이 사라진다.', () => {
+    const eventFormData = makeEventForm({
+      date: '2025-10-01',
+      repeat: { type: 'daily', endDate: '2025-10-22', interval: 77 },
+      title: 'daily인척 daily인 일정',
+    });
+
+    // 반복 아이콘 flag용
+    expect(isRecurring(eventFormData)).toBe(true);
+
+    const singleEventForm = toSingleEventForm(eventFormData);
+
+    // 반복 설정 해제
+    expect(singleEventForm.repeat.type).toBe('none');
+    expect(singleEventForm.repeat.interval).toBe(1);
+    expect(singleEventForm.repeat.endDate).toBeUndefined();
+
+    // 나머지 필드는 그대로 유지
+    expect(singleEventForm.title).toBe(eventFormData.title);
+    expect(singleEventForm.date).toBe(eventFormData.date);
+    expect(singleEventForm.startTime).toBe(eventFormData.startTime);
+    expect(singleEventForm.endTime).toBe(eventFormData.endTime);
+
+    // 반복 아이콘 해제
+    expect(isRecurring(singleEventForm)).toBe(false);
+  });
+
+  it('이미 비반복인 일정에 단일 수정 적용해도 동일하게 아이콘은 보이지 않는다.', () => {
+    const nonRepeatEventForm = makeEventForm({
+      repeat: { type: 'none', interval: 1, endDate: undefined },
+    });
+
+    expect(isRecurring(nonRepeatEventForm)).toBe(false);
+
+    const singleEventForm = toSingleEventForm(nonRepeatEventForm);
+
+    expect(singleEventForm.repeat.type).toBe('none');
+    expect(singleEventForm.repeat.endDate).toBeUndefined();
+    expect(singleEventForm.date).toBe(nonRepeatEventForm.date);
+    expect(singleEventForm.title).toBe(nonRepeatEventForm.title);
   });
 });

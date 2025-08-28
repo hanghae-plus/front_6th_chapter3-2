@@ -128,3 +128,11 @@ export function buildRecurringEvents(eventFormData: EventForm): EventForm[] {
     date,
   }));
 }
+
+export function isRecurring() {
+  return true;
+}
+
+export function toSingleEventForm() {
+  return {};
+}
