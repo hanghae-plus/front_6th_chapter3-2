@@ -1,4 +1,12 @@
-import { Notifications, ChevronLeft, ChevronRight, Delete, Edit, Close } from '@mui/icons-material';
+import {
+  Notifications,
+  ChevronLeft,
+  ChevronRight,
+  Delete,
+  Edit,
+  Close,
+  Autorenew,
+} from '@mui/icons-material';
 import {
   Alert,
   AlertTitle,
@@ -28,15 +36,14 @@ import {
   Typography,
 } from '@mui/material';
 import { useSnackbar } from 'notistack';
-import { useState } from 'react';
+import { useState, ChangeEvent } from 'react';
 
 import { useCalendarView } from './hooks/useCalendarView.ts';
 import { useEventForm } from './hooks/useEventForm.ts';
 import { useEventOperations } from './hooks/useEventOperations.ts';
 import { useNotifications } from './hooks/useNotifications.ts';
 import { useSearch } from './hooks/useSearch.ts';
-// import { Event, EventForm, RepeatType } from './types';
-import { Event, EventForm } from './types';
+import { Event, EventForm, RepeatType } from './types';
 import {
   formatDate,
   formatMonth,
@@ -77,11 +84,11 @@ function App() {
     isRepeating,
     setIsRepeating,
     repeatType,
-    // setRepeatType,
+    setRepeatType,
     repeatInterval,
-    // setRepeatInterval,
+    setRepeatInterval,
     repeatEndDate,
-    // setRepeatEndDate,
+    setRepeatEndDate,
     notificationTime,
     setNotificationTime,
     startTimeError,
@@ -94,8 +101,9 @@ function App() {
     editEvent,
   } = useEventForm();
 
-  const { events, saveEvent, deleteEvent } = useEventOperations(Boolean(editingEvent), () =>
-    setEditingEvent(null)
+  const { events, saveEvent, deleteEvent, fetchEvents } = useEventOperations(
+    Boolean(editingEvent),
+    () => setEditingEvent(null)
   );
 
   const { notifications, notifiedEvents, setNotifications } = useNotifications(events);
@@ -106,6 +114,15 @@ function App() {
   const [overlappingEvents, setOverlappingEvents] = useState<Event[]>([]);
 
   const { enqueueSnackbar } = useSnackbar();
+  const handleRepeatToggleChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const checked = e.target.checked;
+    setIsRepeating(checked);
+    if (!checked) {
+      setRepeatType('none');
+      setRepeatInterval(1);
+      setRepeatEndDate('');
+    }
+  };
 
   const addOrUpdateEvent = async () => {
     if (!title || !date || !startTime || !endTime) {
@@ -116,6 +133,52 @@ function App() {
     if (startTimeError || endTimeError) {
       enqueueSnackbar('시간 설정을 확인해주세요.', { variant: 'error' });
       return;
+    }
+
+    const isInstanceEdit =
+      editingEvent && editingEvent.id.includes('_') && editingEvent.id.match(/_\d{4}-\d{2}-\d{2}$/);
+
+    if (isInstanceEdit && !isRepeating) {
+      const [baseId, dateToExclude] = editingEvent.id.split('_');
+      const baseEvent = events.find((event) => event.id === baseId);
+
+      if (baseEvent && baseEvent.repeat.type !== 'none') {
+        const updatedBaseEvent = {
+          ...baseEvent,
+          repeat: {
+            ...baseEvent.repeat,
+            excludedDates: [...(baseEvent.repeat.excludedDates || []), dateToExclude],
+          },
+        };
+
+        await fetch(`/api/events/${baseId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updatedBaseEvent),
+        });
+
+        const newSingleEvent: EventForm = {
+          title,
+          date,
+          startTime,
+          endTime,
+          description,
+          location,
+          category,
+          repeat: { type: 'none', interval: 0 },
+          notificationTime,
+        };
+
+        await fetch('/api/events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newSingleEvent),
+        });
+
+        await fetchEvents();
+        resetForm();
+        return;
+      }
     }
 
     const eventData: Event | EventForm = {
@@ -201,6 +264,9 @@ function App() {
                           >
                             <Stack direction="row" spacing={1} alignItems="center">
                               {isNotified && <Notifications fontSize="small" />}
+                              {event.repeat.type !== 'none' && (
+                                <Autorenew fontSize="small" aria-label="반복 일정 아이콘" />
+                              )}
                               <Typography
                                 variant="caption"
                                 noWrap
@@ -288,6 +354,9 @@ function App() {
                                 >
                                   <Stack direction="row" spacing={1} alignItems="center">
                                     {isNotified && <Notifications fontSize="small" />}
+                                    {event.repeat.type !== 'none' && (
+                                      <Autorenew fontSize="small" aria-label="반복 일정 아이콘" />
+                                    )}
                                     <Typography
                                       variant="caption"
                                       noWrap
@@ -411,12 +480,7 @@ function App() {
 
           <FormControl>
             <FormControlLabel
-              control={
-                <Checkbox
-                  checked={isRepeating}
-                  onChange={(e) => setIsRepeating(e.target.checked)}
-                />
-              }
+              control={<Checkbox checked={isRepeating} onChange={handleRepeatToggleChange} />}
               label="반복 일정"
             />
           </FormControl>
@@ -437,16 +501,21 @@ function App() {
             </Select>
           </FormControl>
 
-          {/* ! 반복은 8주차 과제에 포함됩니다. 구현하고 싶어도 참아주세요~ */}
-          {/* {isRepeating && (
+          {isRepeating && (
             <Stack spacing={2}>
               <FormControl fullWidth>
-                <FormLabel>반복 유형</FormLabel>
+                <FormLabel id="repeat-type-label">반복 유형</FormLabel>
                 <Select
                   size="small"
-                  value={repeatType}
-                  onChange={(e) => setRepeatType(e.target.value as RepeatType)}
+                  value={repeatType === 'none' ? '' : repeatType}
+                  onChange={(e) => setRepeatType((e.target.value || 'daily') as RepeatType)}
+                  displayEmpty
+                  labelId="repeat-type-label"
+                  label="반복 유형"
                 >
+                  <MenuItem value="" disabled>
+                    선택
+                  </MenuItem>
                   <MenuItem value="daily">매일</MenuItem>
                   <MenuItem value="weekly">매주</MenuItem>
                   <MenuItem value="monthly">매월</MenuItem>
@@ -465,8 +534,9 @@ function App() {
                   />
                 </FormControl>
                 <FormControl fullWidth>
-                  <FormLabel>반복 종료일</FormLabel>
+                  <FormLabel htmlFor="repeat-end-date">반복 종료일</FormLabel>
                   <TextField
+                    id="repeat-end-date"
                     size="small"
                     type="date"
                     value={repeatEndDate}
@@ -475,7 +545,7 @@ function App() {
                 </FormControl>
               </Stack>
             </Stack>
-          )} */}
+          )}
 
           <Button
             data-testid="event-submit-button"
@@ -579,8 +649,11 @@ function App() {
                     <IconButton aria-label="Edit event" onClick={() => editEvent(event)}>
                       <Edit />
                     </IconButton>
-                    <IconButton aria-label="Delete event" onClick={() => deleteEvent(event.id)}>
-                      <Delete />
+                    <IconButton
+                      aria-label={`Delete event ${event.date}`}
+                      onClick={() => deleteEvent(event.id)}
+                    >
+                      <Delete data-testid="DeleteIcon" aria-hidden={false} role="img" />
                     </IconButton>
                   </Stack>
                 </Stack>

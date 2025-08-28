@@ -1,5 +1,6 @@
 import { Event } from '../types';
 import { getWeekDates, isDateInRange } from './dateUtils';
+import { generateInstances } from './repeat/actions';
 
 function filterEventsByDateRange(events: Event[], start: Date, end: Date): Event[] {
   return events.filter((event) => {
@@ -21,7 +22,12 @@ function searchEvents(events: Event[], term: string) {
 
 function filterEventsByDateRangeAtWeek(events: Event[], currentDate: Date) {
   const weekDates = getWeekDates(currentDate);
-  return filterEventsByDateRange(events, weekDates[0], weekDates[6]);
+  const rangeStart = weekDates[0];
+  const rangeEnd = weekDates[6];
+  const merged = events.flatMap((ev) =>
+    ev.repeat.type === 'none' ? [ev] : generateInstances(ev as Event, rangeStart, rangeEnd)
+  );
+  return filterEventsByDateRange(merged, rangeStart, rangeEnd);
 }
 
 function filterEventsByDateRangeAtMonth(events: Event[], currentDate: Date) {
@@ -35,7 +41,10 @@ function filterEventsByDateRangeAtMonth(events: Event[], currentDate: Date) {
     59,
     999
   );
-  return filterEventsByDateRange(events, monthStart, monthEnd);
+  const merged = events.flatMap((ev) =>
+    ev.repeat.type === 'none' ? [ev] : generateInstances(ev as Event, monthStart, monthEnd)
+  );
+  return filterEventsByDateRange(merged, monthStart, monthEnd);
 }
 
 export function getFilteredEvents(
