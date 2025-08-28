@@ -1,3 +1,4 @@
+import { Event, EventForm } from '../../types.ts';
 import { formatDate } from '../../utils/dateUtils.ts';
 import {
   isLeapYear,
@@ -61,5 +62,36 @@ describe('반복 일정 Unit Test', () => {
     const datesWithoutLeap = generateYearlyDates('2025-02-28', '2027-03-01');
     expect(datesWithoutLeap).toEqual(['2025-02-28', '2026-02-28', '2027-02-28']);
     expect(datesWithoutLeap).toContain('2026-02-28');
+  });
+
+  it('반복된 일정에 맞춰 이벤트 생성하기 - daily', () => {
+    const eventFormData: EventForm = {
+      title: 'Daily 일정 만들어랏',
+      date: '2025-10-28', // 시작일
+      startTime: '09:00',
+      endTime: '10:00',
+      description: '',
+      location: '',
+      category: 'default',
+      repeat: { type: 'daily', interval: 1 },
+      notificationTime: 0,
+    };
+
+    const events = buildRecurringEvents(eventFormData);
+
+    // 만들어진 날짜 확인
+    expect(events.map((event: Event) => event.date)).toEqual([
+      '2025-10-28',
+      '2025-10-29',
+      '2025-10-30',
+    ]);
+    // 개수 확인
+    expect(events).toHaveLength(3);
+    // 필드 보존
+    expect(events[0].title).toBe('Daily 일정 만들어랏');
+    expect(events[0].startTime).toBe('09:00');
+    expect(events[0].endTime).toBe('10:00');
+    // 반복 타입은 유지 (아이콘 표시용)
+    expect(events.every((event: Event) => event.repeat?.type === 'daily')).toBe(true);
   });
 });
