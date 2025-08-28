@@ -1,4 +1,12 @@
-import { Notifications, ChevronLeft, ChevronRight, Delete, Edit, Close } from '@mui/icons-material';
+import {
+  Notifications,
+  ChevronLeft,
+  ChevronRight,
+  Delete,
+  Edit,
+  Close,
+  Repeat,
+} from '@mui/icons-material';
 import {
   Alert,
   AlertTitle,
@@ -35,8 +43,7 @@ import { useEventForm } from './hooks/useEventForm.ts';
 import { useEventOperations } from './hooks/useEventOperations.ts';
 import { useNotifications } from './hooks/useNotifications.ts';
 import { useSearch } from './hooks/useSearch.ts';
-// import { Event, EventForm, RepeatType } from './types';
-import { Event, EventForm } from './types';
+import { Event, EventForm, RepeatType } from './types';
 import {
   formatDate,
   formatMonth,
@@ -77,11 +84,11 @@ function App() {
     isRepeating,
     setIsRepeating,
     repeatType,
-    // setRepeatType,
+    setRepeatType,
     repeatInterval,
-    // setRepeatInterval,
+    setRepeatInterval,
     repeatEndDate,
-    // setRepeatEndDate,
+    setRepeatEndDate,
     notificationTime,
     setNotificationTime,
     startTimeError,
@@ -94,9 +101,8 @@ function App() {
     editEvent,
   } = useEventForm();
 
-  const { events, saveEvent, deleteEvent } = useEventOperations(Boolean(editingEvent), () =>
-    setEditingEvent(null)
-  );
+  const { events, saveEvent, deleteEvent, modifyRepeatEvent, deleteRepeatEventGroup } =
+    useEventOperations(Boolean(editingEvent), () => setEditingEvent(null));
 
   const { notifications, notifiedEvents, setNotifications } = useNotifications(events);
   const { view, setView, currentDate, holidays, navigate } = useCalendarView();
@@ -140,7 +146,12 @@ function App() {
       setOverlappingEvents(overlapping);
       setIsOverlapDialogOpen(true);
     } else {
-      await saveEvent(eventData);
+      // 반복 일정을 수정하는 경우
+      if (editingEvent && editingEvent.repeat.type !== 'none') {
+        await modifyRepeatEvent(editingEvent, eventData);
+      } else {
+        await saveEvent(eventData);
+      }
       resetForm();
     }
   };
@@ -201,6 +212,13 @@ function App() {
                           >
                             <Stack direction="row" spacing={1} alignItems="center">
                               {isNotified && <Notifications fontSize="small" />}
+                              {event.repeat.type !== 'none' && (
+                                <Repeat
+                                  fontSize="small"
+                                  color="primary"
+                                  data-testid="recurring-icon"
+                                />
+                              )}
                               <Typography
                                 variant="caption"
                                 noWrap
@@ -274,6 +292,7 @@ function App() {
                               return (
                                 <Box
                                   key={event.id}
+                                  onClick={() => editEvent(event)}
                                   sx={{
                                     p: 0.5,
                                     my: 0.5,
@@ -284,10 +303,21 @@ function App() {
                                     minHeight: '18px',
                                     width: '100%',
                                     overflow: 'hidden',
+                                    cursor: 'pointer',
+                                    '&:hover': {
+                                      backgroundColor: isNotified ? '#ffcdd2' : '#eeeeee',
+                                    },
                                   }}
                                 >
                                   <Stack direction="row" spacing={1} alignItems="center">
                                     {isNotified && <Notifications fontSize="small" />}
+                                    {event.repeat.type !== 'none' && (
+                                      <Repeat
+                                        fontSize="small"
+                                        color="primary"
+                                        data-testid="recurring-icon"
+                                      />
+                                    )}
                                     <Typography
                                       variant="caption"
                                       noWrap
@@ -437,16 +467,21 @@ function App() {
             </Select>
           </FormControl>
 
-          {/* ! 반복은 8주차 과제에 포함됩니다. 구현하고 싶어도 참아주세요~ */}
-          {/* {isRepeating && (
+          {isRepeating && (
             <Stack spacing={2}>
               <FormControl fullWidth>
                 <FormLabel>반복 유형</FormLabel>
                 <Select
+                  id="repeat-type-select"
+                  data-testid="repeat-type-select"
                   size="small"
                   value={repeatType}
-                  onChange={(e) => setRepeatType(e.target.value as RepeatType)}
+                  onChange={(e) => {
+                    console.log('Select onChange:', e.target.value);
+                    setRepeatType(e.target.value as RepeatType);
+                  }}
                 >
+                  <MenuItem value="none">반복 없음</MenuItem>
                   <MenuItem value="daily">매일</MenuItem>
                   <MenuItem value="weekly">매주</MenuItem>
                   <MenuItem value="monthly">매월</MenuItem>
@@ -467,6 +502,7 @@ function App() {
                 <FormControl fullWidth>
                   <FormLabel>반복 종료일</FormLabel>
                   <TextField
+                    id="repeat-end"
                     size="small"
                     type="date"
                     value={repeatEndDate}
@@ -475,7 +511,7 @@ function App() {
                 </FormControl>
               </Stack>
             </Stack>
-          )} */}
+          )}
 
           <Button
             data-testid="event-submit-button"
@@ -579,7 +615,20 @@ function App() {
                     <IconButton aria-label="Edit event" onClick={() => editEvent(event)}>
                       <Edit />
                     </IconButton>
-                    <IconButton aria-label="Delete event" onClick={() => deleteEvent(event.id)}>
+                    <IconButton
+                      aria-label="Delete event"
+                      onClick={() => {
+                        if (event.repeat.type !== 'none') {
+                          const repeatGroupEvents = events.filter(
+                            (e) => e.repeat.repeatId === event.repeat.repeatId
+                          );
+                          const eventIds = repeatGroupEvents.map((e) => e.id);
+                          deleteRepeatEventGroup(eventIds);
+                        } else {
+                          deleteEvent(event.id);
+                        }
+                      }}
+                    >
                       <Delete />
                     </IconButton>
                   </Stack>
