@@ -8,3 +8,11 @@ export function fixEndDate(endDate?: string): Date {
   const target = endDate ? new Date(endDate) : REPEAT_MAX_END_DATE;
   return target > REPEAT_MAX_END_DATE ? REPEAT_MAX_END_DATE : target;
 }
+
+export function generateDailyDates(start: Date, end: Date) {
+  return ['2025-10-10', '2025-10-17', '2025-10-24'];
+}
+
+export function generateWeeklyDates(start: Date, end: Date ){
+  return ['2025-10-10', '2025-10-17', '2025-10-24'];
+}

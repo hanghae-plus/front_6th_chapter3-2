@@ -15,4 +15,18 @@ describe('반복 일정 Unit Test', () => {
     expect(formatDate(fixEndDate('2026-01-01'))).toBe('2025-10-30');
     expect(formatDate(REPEAT_MAX_END_DATE)).toBe('2025-10-30');
   });
+
+  it('일정 날짜 구하기 - 일 단위로 날짜를 반환한다. ', () => {
+    const startDate = new Date('2025-10-28');
+    const endDate = formatDate(fixEndDate('2025-10-30'));
+    const dates = generateDailyDates(startDate, endDate, 1);
+    expect(dates).toEqual(['2025-10-28', '2025-10-29', '2025-10-30']);
+  });
+
+  it('일정 날짜 구하기 - 주 단위로 날짜를 반환한다.', () => {
+    const startDate = new Date('2025-10-10');
+    const endDate = formatDate(fixEndDate('2025-10-30'));
+    const dates = generateWeeklyDates(startDate, endDate, 1);
+    expect(dates).toEqual(['2025-10-10', '2025-10-17', '2025-10-24']);
+  });
 });
