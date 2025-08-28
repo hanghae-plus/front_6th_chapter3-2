@@ -2,6 +2,7 @@ import { useSnackbar } from 'notistack';
 import { useEffect, useState } from 'react';
 
 import { Event, EventForm } from '../types';
+import { getRepeatedDates } from '../utils/eventUtils';
 
 export const useEventOperations = (editing: boolean, onSave?: () => void) => {
   const [events, setEvents] = useState<Event[]>([]);
@@ -30,16 +31,34 @@ export const useEventOperations = (editing: boolean, onSave?: () => void) => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(eventData),
         });
+        if (!response.ok) {
+          throw new Error('Failed to save event');
+        }
       } else {
-        response = await fetch('/api/events', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(eventData),
-        });
-      }
-
-      if (!response.ok) {
-        throw new Error('Failed to save event');
+        const { repeat, date, ...rest } = eventData;
+        const isRepeat = repeat.type !== 'none';
+        if (!isRepeat) {
+          response = await fetch('/api/events', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(eventData),
+          });
+          if (!response.ok) {
+            throw new Error('Failed to save event');
+          }
+        } else {
+          // 반복 일정 생성
+          const datesToCreate = getRepeatedDates(date, repeat); // 반복 일정 계산 util
+          for (const date of datesToCreate) {
+            const newEvent = { ...rest, date: date, repeat };
+            const response = await fetch('/api/events', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(newEvent),
+            });
+            if (!response.ok) throw new Error('Failed to create repeated event');
+          }
+        }
       }
 
       await fetchEvents();

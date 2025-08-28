@@ -1,4 +1,12 @@
-import { Notifications, ChevronLeft, ChevronRight, Delete, Edit, Close } from '@mui/icons-material';
+import {
+  Notifications,
+  ChevronLeft,
+  ChevronRight,
+  Delete,
+  Edit,
+  Close,
+  Repeat,
+} from '@mui/icons-material';
 import {
   Alert,
   AlertTitle,
@@ -35,8 +43,7 @@ import { useEventForm } from './hooks/useEventForm.ts';
 import { useEventOperations } from './hooks/useEventOperations.ts';
 import { useNotifications } from './hooks/useNotifications.ts';
 import { useSearch } from './hooks/useSearch.ts';
-// import { Event, EventForm, RepeatType } from './types';
-import { Event, EventForm } from './types';
+import { Event, EventForm, RepeatType } from './types';
 import {
   formatDate,
   formatMonth,
@@ -77,11 +84,11 @@ function App() {
     isRepeating,
     setIsRepeating,
     repeatType,
-    // setRepeatType,
+    setRepeatType,
     repeatInterval,
-    // setRepeatInterval,
+    setRepeatInterval,
     repeatEndDate,
-    // setRepeatEndDate,
+    setRepeatEndDate,
     notificationTime,
     setNotificationTime,
     startTimeError,
@@ -127,11 +134,13 @@ function App() {
       description,
       location,
       category,
-      repeat: {
-        type: isRepeating ? repeatType : 'none',
-        interval: repeatInterval,
-        endDate: repeatEndDate || undefined,
-      },
+      repeat: editingEvent
+        ? { type: 'none', interval: 0, endDate: undefined }
+        : {
+            type: isRepeating ? repeatType : 'none',
+            interval: repeatInterval,
+            endDate: repeatEndDate || undefined,
+          },
       notificationTime,
     };
 
@@ -184,6 +193,7 @@ function App() {
                       )
                       .map((event) => {
                         const isNotified = notifiedEvents.includes(event.id);
+                        const isRecurrying = event.repeat.type !== 'none';
                         return (
                           <Box
                             key={event.id}
@@ -201,6 +211,7 @@ function App() {
                           >
                             <Stack direction="row" spacing={1} alignItems="center">
                               {isNotified && <Notifications fontSize="small" />}
+                              {isRecurrying && <Repeat aria-label="repeat-event-icon" />}
                               <Typography
                                 variant="caption"
                                 noWrap
@@ -271,6 +282,7 @@ function App() {
                             )}
                             {getEventsForDay(filteredEvents, day).map((event) => {
                               const isNotified = notifiedEvents.includes(event.id);
+                              const isRecurrying = event.repeat.type !== 'none';
                               return (
                                 <Box
                                   key={event.id}
@@ -288,6 +300,8 @@ function App() {
                                 >
                                   <Stack direction="row" spacing={1} alignItems="center">
                                     {isNotified && <Notifications fontSize="small" />}
+                                    {isRecurrying && <Repeat aria-label="repeat-event-icon" />}
+
                                     <Typography
                                       variant="caption"
                                       noWrap
@@ -408,74 +422,88 @@ function App() {
               ))}
             </Select>
           </FormControl>
-
-          <FormControl>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={isRepeating}
-                  onChange={(e) => setIsRepeating(e.target.checked)}
+          {!editingEvent && (
+            <>
+              <FormControl>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={isRepeating}
+                      onChange={(e) => setIsRepeating(e.target.checked)}
+                    />
+                  }
+                  label="반복 일정"
                 />
-              }
-              label="반복 일정"
-            />
-          </FormControl>
+              </FormControl>
 
-          <FormControl fullWidth>
-            <FormLabel htmlFor="notification">알림 설정</FormLabel>
-            <Select
-              id="notification"
-              size="small"
-              value={notificationTime}
-              onChange={(e) => setNotificationTime(Number(e.target.value))}
-            >
-              {notificationOptions.map((option) => (
-                <MenuItem key={option.value} value={option.value}>
-                  {option.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          {/* ! 반복은 8주차 과제에 포함됩니다. 구현하고 싶어도 참아주세요~ */}
-          {/* {isRepeating && (
-            <Stack spacing={2}>
               <FormControl fullWidth>
-                <FormLabel>반복 유형</FormLabel>
+                <FormLabel htmlFor="notification">알림 설정</FormLabel>
                 <Select
+                  id="notification"
                   size="small"
-                  value={repeatType}
-                  onChange={(e) => setRepeatType(e.target.value as RepeatType)}
+                  value={notificationTime}
+                  onChange={(e) => setNotificationTime(Number(e.target.value))}
                 >
-                  <MenuItem value="daily">매일</MenuItem>
-                  <MenuItem value="weekly">매주</MenuItem>
-                  <MenuItem value="monthly">매월</MenuItem>
-                  <MenuItem value="yearly">매년</MenuItem>
+                  {notificationOptions.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label}
+                    </MenuItem>
+                  ))}
                 </Select>
               </FormControl>
-              <Stack direction="row" spacing={2}>
-                <FormControl fullWidth>
-                  <FormLabel>반복 간격</FormLabel>
-                  <TextField
-                    size="small"
-                    type="number"
-                    value={repeatInterval}
-                    onChange={(e) => setRepeatInterval(Number(e.target.value))}
-                    slotProps={{ htmlInput: { min: 1 } }}
-                  />
-                </FormControl>
-                <FormControl fullWidth>
-                  <FormLabel>반복 종료일</FormLabel>
-                  <TextField
-                    size="small"
-                    type="date"
-                    value={repeatEndDate}
-                    onChange={(e) => setRepeatEndDate(e.target.value)}
-                  />
-                </FormControl>
-              </Stack>
-            </Stack>
-          )} */}
+
+              {/* ! 반복은 8주차 과제에 포함됩니다. 구현하고 싶어도 참아주세요~ */}
+              {isRepeating && (
+                <Stack spacing={2}>
+                  <FormControl fullWidth>
+                    <FormLabel id="repeat-type-label">반복 유형</FormLabel>
+                    <Select
+                      size="small"
+                      value={repeatType}
+                      onChange={(e) => setRepeatType((e.target.value as RepeatType) || '')}
+                      aria-labelledby="repeat-type-label"
+                      aria-label="반복 유형"
+                    >
+                      <MenuItem value="daily" aria-label="daily-option">
+                        매일
+                      </MenuItem>
+                      <MenuItem value="weekly" aria-label="weekly-option">
+                        매주
+                      </MenuItem>
+                      <MenuItem value="monthly" aria-label="monthly-option">
+                        매월
+                      </MenuItem>
+                      <MenuItem value="yearly" aria-label="yearly-option">
+                        매년
+                      </MenuItem>
+                    </Select>
+                  </FormControl>
+                  <Stack direction="row" spacing={2}>
+                    <FormControl fullWidth>
+                      <FormLabel>반복 간격</FormLabel>
+                      <TextField
+                        size="small"
+                        type="number"
+                        value={repeatInterval}
+                        onChange={(e) => setRepeatInterval(Number(e.target.value))}
+                        slotProps={{ htmlInput: { min: 1 } }}
+                      />
+                    </FormControl>
+                    <FormControl fullWidth>
+                      <FormLabel htmlFor="repeat-end-date">반복 종료일</FormLabel>
+                      <TextField
+                        id="repeat-end-date"
+                        size="small"
+                        type="date"
+                        value={repeatEndDate}
+                        onChange={(e) => setRepeatEndDate(e.target.value)}
+                      />
+                    </FormControl>
+                  </Stack>
+                </Stack>
+              )}
+            </>
+          )}
 
           <Button
             data-testid="event-submit-button"
@@ -556,15 +584,18 @@ function App() {
                     <Typography>{event.location}</Typography>
                     <Typography>카테고리: {event.category}</Typography>
                     {event.repeat.type !== 'none' && (
-                      <Typography>
-                        반복: {event.repeat.interval}
-                        {event.repeat.type === 'daily' && '일'}
-                        {event.repeat.type === 'weekly' && '주'}
-                        {event.repeat.type === 'monthly' && '월'}
-                        {event.repeat.type === 'yearly' && '년'}
-                        마다
-                        {event.repeat.endDate && ` (종료: ${event.repeat.endDate})`}
-                      </Typography>
+                      <>
+                        <Repeat aria-label="repeat-event-icon" />
+                        <Typography>
+                          반복: {event.repeat.interval}
+                          {event.repeat.type === 'daily' && '일'}
+                          {event.repeat.type === 'weekly' && '주'}
+                          {event.repeat.type === 'monthly' && '월'}
+                          {event.repeat.type === 'yearly' && '년'}
+                          마다
+                          {event.repeat.endDate && ` (종료: ${event.repeat.endDate})`}
+                        </Typography>
+                      </>
                     )}
                     <Typography>
                       알림:{' '}
