@@ -5,10 +5,13 @@ import {
   setupMockHandlerCreation,
   setupMockHandlerDeletion,
   setupMockHandlerUpdating,
+  setupMockHandlerRepeatCreation,
+  setupMockHandlerRepeatDeletion,
+  setupMockHandlerRepeatUpdating,
 } from '../../__mocks__/handlersUtils.ts';
 import { useEventOperations } from '../../hooks/useEventOperations.ts';
 import { server } from '../../setupTests.ts';
-import { Event } from '../../types.ts';
+import { Event, EventForm } from '../../types.ts';
 
 const enqueueSnackbarFn = vi.fn();
 
@@ -170,4 +173,303 @@ it("네트워크 오류 시 '일정 삭제 실패'라는 텍스트가 노출되�
   expect(enqueueSnackbarFn).toHaveBeenCalledWith('일정 삭제 실패', { variant: 'error' });
 
   expect(result.current.events).toHaveLength(1);
+});
+
+describe('반복 일정 저장', () => {
+  it('매일 반복 일정 생성 시 3개의 일정이 생성된다', async () => {
+    setupMockHandlerRepeatCreation();
+
+    const { result } = renderHook(() => useEventOperations(false));
+    await act(() => Promise.resolve(null));
+
+    const dailyRepeatEventData: EventForm = {
+      title: '매일 회의',
+      date: '2025-01-01',
+      startTime: '10:00',
+      endTime: '11:00',
+      description: '매일 반복',
+      location: '회의실',
+      category: '업무',
+      repeat: {
+        type: 'daily',
+        interval: 1,
+        endDate: '2025-01-03', // 3일간
+      },
+      notificationTime: 10,
+    };
+
+    await act(async () => {
+      await result.current.saveEvent(dailyRepeatEventData);
+    });
+
+    expect(result.current.events).toHaveLength(3);
+    expect(result.current.events[0].date).toBe('2025-01-01');
+    expect(result.current.events[1].date).toBe('2025-01-02');
+    expect(result.current.events[2].date).toBe('2025-01-03');
+  });
+
+  it('주간 반복 일정 생성 시 3개의 일정이 생성된다', async () => {
+    setupMockHandlerRepeatCreation();
+
+    const { result } = renderHook(() => useEventOperations(false));
+    await act(() => Promise.resolve(null));
+
+    const weeklyRepeatEventData: EventForm = {
+      title: '주간 회의',
+      date: '2025-01-01',
+      startTime: '09:00',
+      endTime: '10:00',
+      description: '주간 반복',
+      location: '회의실',
+      category: '업무',
+      repeat: {
+        type: 'weekly',
+        interval: 1,
+        endDate: '2025-01-15', // 3주간
+      },
+      notificationTime: 10,
+    };
+
+    await act(async () => {
+      await result.current.saveEvent(weeklyRepeatEventData);
+    });
+
+    expect(result.current.events).toHaveLength(3);
+    expect(result.current.events[0].date).toBe('2025-01-01');
+    expect(result.current.events[1].date).toBe('2025-01-08');
+    expect(result.current.events[2].date).toBe('2025-01-15');
+  });
+
+  it('단일 일정 생성 시 기존 API를 사용한다', async () => {
+    setupMockHandlerCreation();
+
+    const { result } = renderHook(() => useEventOperations(false));
+
+    await act(() => Promise.resolve(null));
+
+    const singleEventData: EventForm = {
+      title: '단일 회의',
+      date: '2025-01-01',
+      startTime: '10:00',
+      endTime: '11:00',
+      description: '단일 일정',
+      location: '회의실',
+      category: '업무',
+      repeat: {
+        type: 'none',
+        interval: 0,
+      },
+      notificationTime: 10,
+    };
+
+    await act(async () => {
+      await result.current.saveEvent(singleEventData);
+    });
+
+    expect(result.current.events).toHaveLength(1);
+  });
+
+  it('반복 일정 저장 성공 시 적절한 성공 메시지를 표시한다', async () => {
+    setupMockHandlerRepeatCreation();
+
+    const { result } = renderHook(() => useEventOperations(false));
+
+    await act(() => Promise.resolve(null));
+
+    const repeatEventData: EventForm = {
+      title: '반복 회의',
+      date: '2025-01-01',
+      startTime: '10:00',
+      endTime: '11:00',
+      description: '매일 반복',
+      location: '회의실',
+      category: '업무',
+      repeat: {
+        type: 'daily',
+        interval: 1,
+        endDate: '2025-01-03',
+      },
+      notificationTime: 10,
+    };
+
+    await act(async () => {
+      await result.current.saveEvent(repeatEventData);
+    });
+
+    expect(enqueueSnackbarFn).toHaveBeenCalledWith('반복 일정이 생성되었습니다.', {
+      variant: 'success',
+    });
+  });
+
+  it('반복 일정 저장 실패 시 적절한 에러 메시지를 표시한다', async () => {
+    server.use(
+      http.post('/api/events-list', () => {
+        return new HttpResponse(null, { status: 500 });
+      })
+    );
+
+    const { result } = renderHook(() => useEventOperations(false));
+    await act(() => Promise.resolve(null));
+
+    const repeatEventData: EventForm = {
+      title: '반복 회의',
+      date: '2025-01-01',
+      startTime: '10:00',
+      endTime: '11:00',
+      description: '매일 반복',
+      location: '회의실',
+      category: '업무',
+      repeat: {
+        type: 'daily',
+        interval: 1,
+        endDate: '2025-01-03',
+      },
+      notificationTime: 10,
+    };
+
+    await act(async () => {
+      await result.current.saveEvent(repeatEventData);
+    });
+
+    expect(enqueueSnackbarFn).toHaveBeenCalledWith('일정 저장 실패', {
+      variant: 'error',
+    });
+  });
+
+  it('반복 종료 날짜가 없으면 에러를 표시한다', async () => {
+    const { result } = renderHook(() => useEventOperations(false));
+    await act(() => Promise.resolve(null));
+
+    const invalidRepeatEventData: EventForm = {
+      title: '잘못된 반복 회의',
+      date: '2025-01-01',
+      startTime: '10:00',
+      endTime: '11:00',
+      description: '매일 반복',
+      location: '회의실',
+      category: '업무',
+      repeat: {
+        type: 'daily',
+        interval: 1,
+        // endDate 없음!
+      },
+      notificationTime: 10,
+    };
+
+    await act(async () => {
+      await result.current.saveEvent(invalidRepeatEventData);
+    });
+
+    expect(enqueueSnackbarFn).toHaveBeenCalledWith('일정 저장 실패', {
+      variant: 'error',
+    });
+  });
+});
+
+describe('반복 일정 수정', () => {
+  it('반복 일정 수정 시 단일 일정으로 변경된다', async () => {
+    setupMockHandlerRepeatCreation();
+    const { result } = renderHook(() => useEventOperations(false));
+
+    // 반복 일정 생성
+    await act(async () => {
+      await result.current.saveEvent({
+        title: '반복 회의',
+        date: '2025-01-01',
+        startTime: '10:00',
+        endTime: '11:00',
+        description: '매일 반복',
+        location: '회의실',
+        category: '업무',
+        notificationTime: 10,
+        repeat: { type: 'daily', interval: 1, endDate: '2025-01-02' },
+      });
+    });
+
+    const createdEvents = result.current.events;
+    const repeatEvent = createdEvents[0];
+
+    setupMockHandlerRepeatUpdating(createdEvents);
+    const { result: editResult } = renderHook(() => useEventOperations(true));
+
+    await act(() => Promise.resolve(null));
+
+    await act(async () => {
+      await editResult.current.saveEvent({ ...repeatEvent, title: '수정된 회의' });
+    });
+
+    expect(editResult.current.events[0].repeat.type).toBe('none');
+    expect(editResult.current.events[0].title).toBe('수정된 회의');
+  });
+
+  it('반복 일정 수정 실패 시 적절한 에러 메시지를 표시한다', async () => {
+    setupMockHandlerRepeatCreation();
+    const { result } = renderHook(() => useEventOperations(false));
+
+    // 반복 일정 생성
+    await act(async () => {
+      await result.current.saveEvent({
+        title: '반복 회의',
+        date: '2025-01-01',
+        startTime: '10:00',
+        endTime: '11:00',
+        description: '매일 반복',
+        location: '회의실',
+        category: '업무',
+        notificationTime: 10,
+        repeat: { type: 'daily', interval: 1, endDate: '2025-01-02' },
+      });
+    });
+
+    const repeatEvent = result.current.events[0];
+
+    const { result: editResult } = renderHook(() => useEventOperations(true));
+
+    server.use(
+      http.put('/api/events/:id', () => {
+        return new HttpResponse(null, { status: 500 });
+      })
+    );
+
+    await act(async () => {
+      await editResult.current.saveEvent({ ...repeatEvent, title: '수정된 회의' });
+    });
+
+    expect(enqueueSnackbarFn).toHaveBeenCalledWith('일정 저장 실패', {
+      variant: 'error',
+    });
+  });
+});
+
+describe('반복 일정 삭제', () => {
+  it('반복 일정 삭제 시 해당 일정만 삭제된다', async () => {
+    setupMockHandlerRepeatCreation();
+    const { result } = renderHook(() => useEventOperations(false));
+
+    await act(async () => {
+      await result.current.saveEvent({
+        title: '반복 회의',
+        date: '2025-01-01',
+        startTime: '10:00',
+        endTime: '11:00',
+        description: '매일 반복',
+        location: '회의실',
+        category: '업무',
+        notificationTime: 10,
+        repeat: { type: 'daily', interval: 1, endDate: '2025-01-02' },
+      });
+    });
+
+    const initialCount = result.current.events.length;
+    const eventToDelete = result.current.events[0];
+
+    setupMockHandlerRepeatDeletion(result.current.events);
+
+    await act(async () => {
+      await result.current.deleteEvent(eventToDelete.id);
+    });
+
+    expect(result.current.events.length).toBe(initialCount - 1);
+    expect(result.current.events.find((e) => e.id === eventToDelete.id)).toBeUndefined();
+  });
 });
