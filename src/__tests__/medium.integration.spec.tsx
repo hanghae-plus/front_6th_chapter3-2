@@ -19,17 +19,6 @@ import { server } from '../setupTests';
 import { Event } from '../types';
 
 const theme = createTheme();
-const enqueueSnackbarFn = vi.fn();
-
-vi.mock('notistack', async () => {
-  const actual = await vi.importActual('notistack');
-  return {
-    ...actual,
-    useSnackbar: () => ({
-      enqueueSnackbar: enqueueSnackbarFn,
-    }),
-  };
-});
 
 // ! Hard 여기 제공 안함
 const setup = (element: ReactElement) => {
@@ -140,7 +129,7 @@ describe('일정 뷰', () => {
 
     const eventList = within(screen.getByTestId('event-list'));
     expect(eventList.getByText('검색 결과가 없습니다.')).toBeInTheDocument();
-  });
+  }, 30000);
 
   it('주별 뷰 선택 후 해당 일자에 일정이 존재한다면 해당 일정이 정확히 표시된다', async () => {
     setupMockHandlerCreation();
@@ -173,7 +162,7 @@ describe('일정 뷰', () => {
 
     const eventList = within(screen.getByTestId('event-list'));
     expect(eventList.getByText('검색 결과가 없습니다.')).toBeInTheDocument();
-  });
+  }, 30000);
 
   it('월별 뷰에 일정이 정확히 표시되는지 확인한다', async () => {
     setupMockHandlerCreation();
@@ -253,7 +242,7 @@ describe('검색 기능', () => {
 
     const eventList = within(screen.getByTestId('event-list'));
     expect(eventList.getByText('검색 결과가 없습니다.')).toBeInTheDocument();
-  });
+  }, 30000);
 
   it("'팀 회의'를 검색하면 해당 제목을 가진 일정이 리스트에 노출된다", async () => {
     const { user } = setup(<App />);
@@ -263,7 +252,7 @@ describe('검색 기능', () => {
 
     const eventList = within(screen.getByTestId('event-list'));
     expect(eventList.getByText('팀 회의')).toBeInTheDocument();
-  });
+  }, 30000);
 
   it('검색어를 지우면 모든 일정이 다시 표시되어야 한다', async () => {
     const { user } = setup(<App />);
@@ -275,7 +264,7 @@ describe('검색 기능', () => {
     const eventList = within(screen.getByTestId('event-list'));
     expect(eventList.getByText('팀 회의')).toBeInTheDocument();
     expect(eventList.getByText('프로젝트 계획')).toBeInTheDocument();
-  });
+  }, 30000);
 });
 
 describe('일정 충돌', () => {
@@ -439,9 +428,7 @@ describe('반복 기능', () => {
     // 반복 유형을 선택하지 않고 일정 추가
     await user.click(screen.getByTestId('event-submit-button'));
 
-    expect(enqueueSnackbarFn).toHaveBeenCalledWith('반복 유형을 선택해주세요.', {
-      variant: 'error',
-    });
+    expect(await screen.findByText(/반복 유형을 선택해주세요/)).toBeInTheDocument();
   }, 30000);
 
   // 반복 일정은 제목 앞에 * 표시

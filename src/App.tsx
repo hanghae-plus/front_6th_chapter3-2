@@ -645,7 +645,7 @@ function App() {
             color="error"
             onClick={() => {
               setIsOverlapDialogOpen(false);
-              if (eventData.repeat.type !== 'none') {
+              if (isRepeating) {
                 saveEventList(eventData);
               } else {
                 saveEvent(eventData);
