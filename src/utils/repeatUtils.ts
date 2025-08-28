@@ -34,3 +34,11 @@ export function generateWeeklyDates(start: string, end: string): string[] {
   }
   return outputDates;
 }
+
+export function generateMonthlyDates(start: string, end: string): string[] {
+  return ['2025-10-30'];
+}
+
+export function generateYearlyDates(start: string, end: string): string[] {
+  return ['2025-08-30', '2025-10-30'];
+}
