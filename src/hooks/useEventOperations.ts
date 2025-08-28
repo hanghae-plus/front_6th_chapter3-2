@@ -21,20 +21,45 @@ export const useEventOperations = (editing: boolean, onSave?: () => void) => {
     }
   };
 
+  const saveEvents = async (eventsData: EventForm[]) => {
+    try {
+      const response = await fetch('/api/events-list', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ events: eventsData }),
+      });
+
+      if (!response.ok) {
+        console.log('error response:', response);
+        throw new Error('Failed to save events');
+      }
+
+      await fetchEvents();
+      onSave?.();
+      enqueueSnackbar('일정이 추가되었습니다.', {
+        variant: 'success',
+      });
+    } catch (error) {
+      console.error('Error saving events:', error);
+      enqueueSnackbar('일정 저장 실패', { variant: 'error' });
+    }
+  };
+
   const saveEvent = async (eventData: Event | EventForm) => {
+    const noRepeatEvent = { ...eventData, repeat: { type: 'none', interval: 0 } };
     try {
       let response;
       if (editing) {
-        response = await fetch(`/api/events/${(eventData as Event).id}`, {
+        response = await fetch(`/api/events/${(noRepeatEvent as Event).id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(eventData),
+          body: JSON.stringify(noRepeatEvent),
         });
       } else {
         response = await fetch('/api/events', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(eventData),
+          body: JSON.stringify(noRepeatEvent),
         });
       }
 
@@ -79,5 +104,5 @@ export const useEventOperations = (editing: boolean, onSave?: () => void) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { events, fetchEvents, saveEvent, deleteEvent };
+  return { events, fetchEvents, saveEvent, saveEvents, deleteEvent };
 };

@@ -20,6 +20,47 @@ export const setupMockHandlerCreation = (initEvents = [] as Event[]) => {
   );
 };
 
+export const setupMockHandlerRepeatCreation = () => {
+  const mockEvents: Event[] = [];
+
+  server.use(
+    http.get('/api/events', () => {
+      return HttpResponse.json({ events: mockEvents });
+    }),
+    http.post('/api/events-list', async ({ request }) => {
+      const { events: newEvents } = (await request.json()) as { events: Event[] };
+      console.log('newEvents:', newEvents);
+      let id = mockEvents.length + 1;
+      newEvents.forEach((event) => {
+        event.id = String(id++);
+      });
+      mockEvents.push(...newEvents);
+      console.log('mockEvents:', mockEvents);
+      return HttpResponse.json(mockEvents, { status: 201 });
+    }),
+    http.put('/api/events/:id', async ({ params, request }) => {
+      const { id } = params;
+
+      const updatedEvent = (await request.json()) as Event;
+
+      const index = mockEvents.findIndex((event) => event.id === id);
+
+      mockEvents[index] = {
+        ...mockEvents[index],
+        ...updatedEvent,
+        repeat: { type: 'none', interval: 0 },
+      };
+      return HttpResponse.json(mockEvents[index]);
+    }),
+    http.delete('/api/events/:id', ({ params }) => {
+      const { id } = params;
+      const index = mockEvents.findIndex((event) => event.id === id);
+
+      mockEvents.splice(index, 1);
+      return new HttpResponse(null, { status: 204 });
+    })
+  );
+};
 export const setupMockHandlerUpdating = () => {
   const mockEvents: Event[] = [
     {
