@@ -1,4 +1,12 @@
-import { Notifications, ChevronLeft, ChevronRight, Delete, Edit, Close } from '@mui/icons-material';
+import {
+  Notifications,
+  ChevronLeft,
+  ChevronRight,
+  Delete,
+  Edit,
+  Close,
+  Loop,
+} from '@mui/icons-material';
 import {
   Alert,
   AlertTitle,
@@ -35,8 +43,7 @@ import { useEventForm } from './hooks/useEventForm.ts';
 import { useEventOperations } from './hooks/useEventOperations.ts';
 import { useNotifications } from './hooks/useNotifications.ts';
 import { useSearch } from './hooks/useSearch.ts';
-// import { Event, EventForm, RepeatType } from './types';
-import { Event, EventForm } from './types';
+import { Event, EventForm, RepeatType } from './types';
 import {
   formatDate,
   formatMonth,
@@ -77,11 +84,11 @@ function App() {
     isRepeating,
     setIsRepeating,
     repeatType,
-    // setRepeatType,
+    setRepeatType,
     repeatInterval,
-    // setRepeatInterval,
+    setRepeatInterval,
     repeatEndDate,
-    // setRepeatEndDate,
+    setRepeatEndDate,
     notificationTime,
     setNotificationTime,
     startTimeError,
@@ -128,7 +135,8 @@ function App() {
       location,
       category,
       repeat: {
-        type: isRepeating ? repeatType : 'none',
+        // 수정 모드에서는 항상 단일 일정으로 변경 (반복 해제)
+        type: editingEvent ? 'none' : isRepeating ? repeatType : 'none',
         interval: repeatInterval,
         endDate: repeatEndDate || undefined,
       },
@@ -184,6 +192,7 @@ function App() {
                       )
                       .map((event) => {
                         const isNotified = notifiedEvents.includes(event.id);
+                        const isRepeat = event.repeat.type !== 'none';
                         return (
                           <Box
                             key={event.id}
@@ -201,6 +210,7 @@ function App() {
                           >
                             <Stack direction="row" spacing={1} alignItems="center">
                               {isNotified && <Notifications fontSize="small" />}
+                              {isRepeat && <Loop fontSize="small" color="primary" />}
                               <Typography
                                 variant="caption"
                                 noWrap
@@ -271,6 +281,7 @@ function App() {
                             )}
                             {getEventsForDay(filteredEvents, day).map((event) => {
                               const isNotified = notifiedEvents.includes(event.id);
+                              const isRepeat = event.repeat.type !== 'none';
                               return (
                                 <Box
                                   key={event.id}
@@ -287,6 +298,7 @@ function App() {
                                   }}
                                 >
                                   <Stack direction="row" spacing={1} alignItems="center">
+                                    {isRepeat && <Loop fontSize="small" color="primary" />}
                                     {isNotified && <Notifications fontSize="small" />}
                                     <Typography
                                       variant="caption"
@@ -438,7 +450,7 @@ function App() {
           </FormControl>
 
           {/* ! 반복은 8주차 과제에 포함됩니다. 구현하고 싶어도 참아주세요~ */}
-          {/* {isRepeating && (
+          {isRepeating && (
             <Stack spacing={2}>
               <FormControl fullWidth>
                 <FormLabel>반복 유형</FormLabel>
@@ -475,7 +487,7 @@ function App() {
                 </FormControl>
               </Stack>
             </Stack>
-          )} */}
+          )}
 
           <Button
             data-testid="event-submit-button"
