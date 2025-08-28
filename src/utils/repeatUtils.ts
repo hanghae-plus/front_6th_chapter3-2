@@ -1,5 +1,5 @@
 import { formatDate, getDaysInMonth } from './dateUtils.ts';
-import { EventForm, RepeatInfo, RepeatType } from '../types.ts';
+import { Event, EventForm, RepeatInfo, RepeatType } from '../types.ts';
 
 export const REPEAT_MAX_END_DATE = new Date('2025-10-30T00:00:00');
 
@@ -137,4 +137,8 @@ export function isRecurring<T extends { repeat: { type: RepeatType } }>(target: 
 export function toSingleEventForm<T extends { repeat: RepeatInfo }>(target: T): T {
   const singleRepeat: RepeatInfo = { type: 'none', interval: 1 };
   return { ...target, repeat: singleRepeat };
+}
+
+export function removeEventById(list: Event[], targetId: string): Event[] {
+  return list.filter((event: Event) => event.id !== targetId);
 }

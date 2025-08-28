@@ -10,7 +10,7 @@ import {
   generateYearlyDates,
   buildRecurringEvents,
   isRecurring,
-  toSingleEventForm,
+  toSingleEventForm, removeEventById,
 } from '../../utils/repeatUtils.ts';
 import { makeEventForm } from '../utils.ts';
 

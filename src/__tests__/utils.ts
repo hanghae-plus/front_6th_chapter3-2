@@ -20,7 +20,6 @@ export const makeEventForm = (overrides: Partial<EventForm> = {}): EventForm => 
   description: overrides.description ?? '',
   location: overrides.location ?? '',
   category: overrides.category ?? 'default',
-  // 이번 과제에선 interval은 무시하지만 타입 호환을 위해 남겨 둡니다.
   repeat: overrides.repeat ?? { type: 'none', interval: 1, endDate: undefined },
   notificationTime: overrides.notificationTime ?? 0,
 });
