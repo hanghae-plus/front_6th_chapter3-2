@@ -36,4 +36,10 @@ export const handlers = [
 
     return new HttpResponse(null, { status: 404 });
   }),
+  http.post('/api/events-list', async ({ request }) => {
+    const events = (await request.json()) as Event[];
+
+    // 실제 서버처럼 events 배열에 추가 (선택사항)
+    return HttpResponse.json(events, { status: 201 });
+  }),
 ];

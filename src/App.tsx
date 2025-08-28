@@ -36,7 +36,7 @@ import { useEventOperations } from './hooks/useEventOperations.ts';
 import { useNotifications } from './hooks/useNotifications.ts';
 import { useSearch } from './hooks/useSearch.ts';
 // import { Event, EventForm, RepeatType } from './types';
-import { Event, EventForm } from './types';
+import { Event, EventForm, RepeatType } from './types';
 import {
   formatDate,
   formatMonth,
@@ -77,11 +77,11 @@ function App() {
     isRepeating,
     setIsRepeating,
     repeatType,
-    // setRepeatType,
+    setRepeatType,
     repeatInterval,
-    // setRepeatInterval,
+    setRepeatInterval,
     repeatEndDate,
-    // setRepeatEndDate,
+    setRepeatEndDate,
     notificationTime,
     setNotificationTime,
     startTimeError,
@@ -208,6 +208,13 @@ function App() {
                               >
                                 {event.title}
                               </Typography>
+                              {event.repeat.type !== 'none' && (
+                                <img
+                                  style={{ width: '14px', height: 'auto', verticalAlign: 'middle' }}
+                                  src="/public/repeat.png"
+                                  alt="반복된 일정"
+                                />
+                              )}
                             </Stack>
                           </Box>
                         );
@@ -295,6 +302,17 @@ function App() {
                                     >
                                       {event.title}
                                     </Typography>
+                                    {event.repeat.type !== 'none' && (
+                                      <img
+                                        style={{
+                                          width: '14px',
+                                          height: 'auto',
+                                          verticalAlign: 'middle',
+                                        }}
+                                        src="/public/repeat.png"
+                                        alt="반복된 일정"
+                                      />
+                                    )}
                                   </Stack>
                                 </Box>
                               );
@@ -438,15 +456,19 @@ function App() {
           </FormControl>
 
           {/* ! 반복은 8주차 과제에 포함됩니다. 구현하고 싶어도 참아주세요~ */}
-          {/* {isRepeating && (
+          {isRepeating && (
             <Stack spacing={2}>
               <FormControl fullWidth>
                 <FormLabel>반복 유형</FormLabel>
                 <Select
+                  id="repeat"
                   size="small"
                   value={repeatType}
+                  aria-labelledby="repeat-label"
+                  aria-label="반복"
                   onChange={(e) => setRepeatType(e.target.value as RepeatType)}
                 >
+                  <MenuItem value="none"></MenuItem>
                   <MenuItem value="daily">매일</MenuItem>
                   <MenuItem value="weekly">매주</MenuItem>
                   <MenuItem value="monthly">매월</MenuItem>
@@ -460,6 +482,7 @@ function App() {
                     size="small"
                     type="number"
                     value={repeatInterval}
+                    aria-label="반복 간격"
                     onChange={(e) => setRepeatInterval(Number(e.target.value))}
                     slotProps={{ htmlInput: { min: 1 } }}
                   />
@@ -469,13 +492,14 @@ function App() {
                   <TextField
                     size="small"
                     type="date"
+                    aria-label="반복 종료일"
                     value={repeatEndDate}
                     onChange={(e) => setRepeatEndDate(e.target.value)}
                   />
                 </FormControl>
               </Stack>
             </Stack>
-          )} */}
+          )}
 
           <Button
             data-testid="event-submit-button"

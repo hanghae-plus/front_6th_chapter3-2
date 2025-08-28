@@ -2,6 +2,7 @@ import { useSnackbar } from 'notistack';
 import { useEffect, useState } from 'react';
 
 import { Event, EventForm } from '../types';
+import { generateRepeatEvents } from '../utils/repeatUtils';
 
 export const useEventOperations = (editing: boolean, onSave?: () => void) => {
   const [events, setEvents] = useState<Event[]>([]);
@@ -9,10 +10,11 @@ export const useEventOperations = (editing: boolean, onSave?: () => void) => {
 
   const fetchEvents = async () => {
     try {
-      const response = await fetch('/api/events');
+      const response = await fetch(`/api/events`);
       if (!response.ok) {
         throw new Error('Failed to fetch events');
       }
+
       const { events } = await response.json();
       setEvents(events);
     } catch (error) {
@@ -31,11 +33,16 @@ export const useEventOperations = (editing: boolean, onSave?: () => void) => {
           body: JSON.stringify(eventData),
         });
       } else {
-        response = await fetch('/api/events', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(eventData),
-        });
+        const repeatEvents = generateRepeatEvents(eventData);
+
+        response = await fetch(
+          `/api/${eventData.repeat.type === 'none' ? 'events' : 'events-list'}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(eventData.repeat.type === 'none' ? eventData : repeatEvents),
+          }
+        );
       }
 
       if (!response.ok) {
