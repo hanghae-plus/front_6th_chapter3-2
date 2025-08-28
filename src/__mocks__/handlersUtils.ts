@@ -92,3 +92,116 @@ export const setupMockHandlerDeletion = () => {
     })
   );
 };
+
+// 일괄(batch) CUD 전용 핸들러들 (/api/events-list)
+
+// CREATE: /api/events-list (배열 생성)
+export const setupMockHandlerBatchCreation = (initEvents = [] as Event[]) => {
+  const mockEvents: Event[] = [...initEvents];
+
+  server.use(
+    // 공용 조회
+    http.get('/api/events', () => {
+      return HttpResponse.json({ events: mockEvents });
+    }),
+    // 일괄 생성
+    http.post('/api/events-list', async ({ request }) => {
+      const body = (await request.json()) as { events: Event[] };
+      const repeatId = `repeat-${Date.now()}`;
+
+      const newEvents = body.events.map((event, idx) => {
+        const isRepeatEvent = event.repeat?.type && event.repeat.type !== 'none';
+        return {
+          ...event,
+          id: String(mockEvents.length + idx + 1),
+          repeat: {
+            ...event.repeat,
+            id: isRepeatEvent ? repeatId : undefined,
+          },
+        } as Event;
+      });
+
+      mockEvents.push(...newEvents);
+      return HttpResponse.json(newEvents, { status: 201 });
+    })
+  );
+};
+
+export const setupMockHandlerRepeatCreationAndUpdate = () => {
+  const mockEvents: Event[] = [];
+
+  server.use(
+    // 조회
+    http.get('/api/events', () => {
+      return HttpResponse.json({ events: mockEvents });
+    }),
+    // 반복일정 생성
+    http.post('/api/events-list', async ({ request }) => {
+      const body = (await request.json()) as { events: Event[] };
+      const repeatId = `repeat-${Date.now()}`;
+
+      const newEvents = body.events.map((event, idx) => {
+        const isRepeatEvent = event.repeat?.type && event.repeat.type !== 'none';
+        return {
+          ...event,
+          id: String(mockEvents.length + idx + 1),
+          repeat: {
+            ...event.repeat,
+            id: isRepeatEvent ? repeatId : undefined,
+          },
+        } as Event;
+      });
+
+      mockEvents.push(...newEvents);
+      return HttpResponse.json(newEvents, { status: 201 });
+    }),
+    // 단일 수정
+    http.put('/api/events/:id', async ({ params, request }) => {
+      const { id } = params;
+      const updatedEvent = (await request.json()) as Event;
+      const index = mockEvents.findIndex((event) => event.id === id);
+
+      if (index > -1) {
+        mockEvents[index] = { ...mockEvents[index], ...updatedEvent };
+        return HttpResponse.json(mockEvents[index]);
+      }
+      return new HttpResponse('Event not found', { status: 404 });
+    })
+  );
+};
+
+export const setupMockHandlerRepeatDeletion = () => {
+  const mockEvents: Event[] = [];
+
+  server.use(
+    http.get('/api/events', () => {
+      return HttpResponse.json({ events: mockEvents });
+    }),
+    http.post('/api/events-list', async ({ request }) => {
+      const body = (await request.json()) as { events: Event[] };
+      const repeatId = `repeat-${Date.now()}`;
+
+      const newEvents = body.events.map(
+        (event, idx) =>
+          ({
+            ...event,
+            id: String(mockEvents.length + idx + 1),
+            repeat: { ...event.repeat, id: repeatId },
+          }) as Event
+      );
+
+      mockEvents.push(...newEvents);
+      return HttpResponse.json(newEvents, { status: 201 });
+    }),
+    http.delete('/api/events/:id', ({ params }) => {
+      const { id } = params;
+      const index = mockEvents.findIndex((event) => event.id === id);
+
+      if (index > -1) {
+        mockEvents.splice(index, 1);
+        return new HttpResponse(null, { status: 204 });
+      }
+      return new HttpResponse('Event not found', { status: 404 });
+    })
+  );
+};
