@@ -351,6 +351,10 @@ describe('반복 기능', () => {
   it('일정 생성/수정 시 매일, 매주, 매월, 매년 반복 유형을 선택할 수 있다', async () => {
     const { user } = setup(<App />);
 
+    // 반복 일정 체크박스
+    const repeatCheckbox = screen.getByLabelText('반복 일정');
+    await user.click(repeatCheckbox);
+
     // 반복 옵션 렌더링 확인
     expect(screen.getByText('반복 유형')).toBeInTheDocument();
     expect(screen.getByText('반복 간격')).toBeInTheDocument();
@@ -379,6 +383,9 @@ describe('반복 기능', () => {
     await user.click(screen.getByLabelText('카테고리'));
     await user.click(within(screen.getByLabelText('카테고리')).getByRole('combobox'));
     await user.click(screen.getByRole('option', { name: `업무-option` }));
+
+    const repeatCheckbox = screen.getByLabelText('반복 일정');
+    await user.click(repeatCheckbox);
 
     // 반복 유형 선택 - 매주
     const repeatSelect = within(screen.getByLabelText('반복 유형 선택')).getByRole('combobox');
@@ -415,6 +422,9 @@ describe('반복 기능', () => {
     await user.click(screen.getByLabelText('카테고리'));
     await user.click(within(screen.getByLabelText('카테고리')).getByRole('combobox'));
     await user.click(screen.getByRole('option', { name: `업무-option` }));
+
+    const repeatCheckbox = screen.getByLabelText('반복 일정');
+    await user.click(repeatCheckbox);
 
     // 반복 유형 선택 - 매일
     await user.click(within(screen.getByLabelText('반복 유형 선택')).getByRole('combobox'));
@@ -493,6 +503,9 @@ describe('반복 기능', () => {
     await user.click(screen.getByLabelText('카테고리'));
     await user.click(within(screen.getByLabelText('카테고리')).getByRole('combobox'));
     await user.click(screen.getByRole('option', { name: `업무-option` }));
+
+    const repeatCheckbox = screen.getByLabelText('반복 일정');
+    await user.click(repeatCheckbox);
 
     // 반복 유형 선택 - 매일
     await user.click(within(screen.getByLabelText('반복 유형 선택')).getByRole('combobox'));

@@ -142,16 +142,15 @@ function App() {
     }
 
     // 반복 타입에 따라 겹치는 이벤트 배열 가져옴
-    const overlapping =
-      eventData.repeat.type !== 'none'
-        ? findOverlappingRepeatEvents(getRepeatEventList(eventData), events)
-        : findOverlappingEvents(eventData, events);
+    const overlapping = isRepeating
+      ? findOverlappingRepeatEvents(getRepeatEventList(eventData), events)
+      : findOverlappingEvents(eventData, events);
 
     if (overlapping.length > 0) {
       setOverlappingEvents(overlapping);
       setIsOverlapDialogOpen(true);
     } else {
-      if (eventData.repeat.type !== 'none') {
+      if (isRepeating) {
         await saveEventList(eventData);
       } else {
         await saveEvent(eventData);
