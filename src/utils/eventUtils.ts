@@ -56,3 +56,24 @@ export function getFilteredEvents(
 
   return searchedEvents;
 }
+
+export function createEvent(
+  type: 'single' | 'repeating',
+  repeatType: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly',
+  interval: number
+): Event {
+  const title = type === 'single' ? 'Single Event' : `Repeating Event ${repeatType} ${interval}`;
+
+  return {
+    id: `event-${type}-${repeatType}-${interval}`,
+    title,
+    date: '2025-01-01',
+    startTime: '09:00',
+    endTime: '10:00',
+    description: '',
+    location: '',
+    category: '업무',
+    repeat: { type: repeatType, interval, endDate: undefined },
+    notificationTime: 0,
+  };
+}

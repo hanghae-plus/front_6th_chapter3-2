@@ -340,3 +340,108 @@ it('notificationTime을 10으로 하면 지정 시간 10분 전 알람 텍스트
 
   expect(screen.getByText('10분 후 기존 회의 일정이 시작됩니다.')).toBeInTheDocument();
 });
+
+describe('반복 일정 통합 기능', () => {
+  it('반복 일정 체크박스가 존재한다', async () => {
+    setup(<App />);
+
+    // 반복 일정 체크박스가 존재해야 함
+    expect(screen.getByLabelText('반복 일정')).toBeInTheDocument();
+  });
+
+  it('반복 일정 체크박스 클릭 후 상태를 확인한다', async () => {
+    const { user } = setup(<App />);
+
+    // 반복 일정 체크박스 클릭
+    const repeatCheckbox = screen.getByLabelText('반복 일정');
+    expect(repeatCheckbox).toBeInTheDocument();
+
+    // 클릭 전 상태 확인
+    expect(repeatCheckbox).not.toBeChecked();
+
+    // 클릭
+    await user.click(repeatCheckbox);
+
+    // 클릭 후 상태 확인
+    expect(repeatCheckbox).toBeChecked();
+
+    // 현재 DOM 상태 출력 (디버깅용)
+    console.log('Current DOM after checkbox click:', document.body.innerHTML);
+  });
+
+  it('반복 일정 체크박스를 클릭하면 반복 설정 UI가 표시된다', async () => {
+    const { user } = setup(<App />);
+
+    // 반복 일정 체크박스 클릭
+    await user.click(screen.getByLabelText('반복 일정'));
+
+    // 반복 유형 선택 UI가 표시되어야 함
+    expect(screen.getByText('반복 유형')).toBeInTheDocument();
+    expect(screen.getByText('반복 간격')).toBeInTheDocument();
+    expect(screen.getByText('반복 종료일')).toBeInTheDocument();
+  });
+
+  it('매일 반복 일정을 생성할 수 있다', async () => {
+    server.resetHandlers();
+
+    // 기존 이벤트가 있는 상태에서 시작 (현재 시스템 시간과 일치하는 날짜 사용)
+    const initialEvents = [
+      {
+        id: '1',
+        title: '기존 일정',
+        date: '2025-10-01', // 현재 시스템 시간과 일치
+        startTime: '09:00',
+        endTime: '10:00',
+        description: '기존 일정입니다',
+        location: '회의실',
+        category: '업무',
+        repeat: { type: 'none' as const, interval: 0 },
+        notificationTime: 10,
+      },
+    ];
+
+    setupMockHandlerCreation(initialEvents);
+
+    const { user } = setup(<App />);
+
+    // 기존 이벤트가 표시되는지 확인 (이벤트 리스트에서)
+    const eventListContainer = within(screen.getByTestId('event-list'));
+    await eventListContainer.findByText('기존 일정');
+    // 반복 일정 생성
+    await user.click(screen.getAllByText('일정 추가')[0]);
+
+    await user.type(screen.getByLabelText('제목'), '매일 운동');
+    await user.type(screen.getByLabelText('날짜'), '2025-10-01'); // 현재 시스템 시간과 일치
+    await user.type(screen.getByLabelText('시작 시간'), '06:00');
+    await user.type(screen.getByLabelText('종료 시간'), '07:00');
+    await user.type(screen.getByLabelText('설명'), '매일 아침 운동');
+    await user.type(screen.getByLabelText('위치'), '집');
+    await user.click(screen.getByLabelText('카테고리'));
+    await user.click(within(screen.getByLabelText('카테고리')).getByRole('combobox'));
+    await user.click(screen.getByRole('option', { name: '개인-option' }));
+
+    // 반복 설정
+    await user.click(screen.getByLabelText('반복 일정'));
+
+    // 반복 유형 선택: Select 클릭 후 옵션 선택
+    const repeatTypeSelect = screen
+      .getByText('반복 유형')
+      .closest('.MuiFormControl-root')
+      ?.querySelector('[role="combobox"]');
+    if (repeatTypeSelect) {
+      await user.click(repeatTypeSelect);
+      // 옵션이 나타날 때까지 대기
+      await screen.findByRole('option', { name: '매일' });
+      await user.click(screen.getByRole('option', { name: '매일' }));
+    }
+
+    await user.type(screen.getByLabelText('반복 종료일'), '2025-10-05'); // 현재 시스템 시간과 일치
+    await user.click(screen.getByTestId('event-submit-button'));
+
+    // 이벤트 리스트에서 반복 정보 확인
+    const eventList = within(screen.getByTestId('event-list'));
+    expect(eventList.getByText('매일 운동')).toBeInTheDocument();
+    expect(eventList.getByText(/반복: 1일마다/)).toBeInTheDocument();
+    expect(eventList.getByText(/종료: 2025-10-05/)).toBeInTheDocument();
+  });
+});
