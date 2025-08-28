@@ -1,4 +1,5 @@
 import { formatDate, getDaysInMonth } from './dateUtils.ts';
+import { EventForm } from '../types.ts';
 
 export const REPEAT_MAX_END_DATE = new Date('2025-10-30T00:00:00');
 
@@ -93,4 +94,37 @@ export function generateYearlyDates(start: string, end: string): string[] {
     }
   }
   return outputDates;
+}
+
+export function buildRecurringEvents(eventFormData: EventForm): EventForm[] {
+  const recurrence = eventFormData.repeat;
+
+  if (!recurrence || recurrence.type === 'none') return [eventFormData];
+
+  const startDate = eventFormData.date;
+  const fixedEndDate = fixEndDate(recurrence.endDate);
+  const endDate = formatDate(fixedEndDate);
+
+  if (new Date(startDate) > fixedEndDate) return [];
+
+  let occurrenceDates: string[] = [];
+
+  switch (recurrence.type) {
+    case 'daily':
+      occurrenceDates = generateDailyDates(startDate, endDate);
+      break;
+    case 'weekly':
+      occurrenceDates = generateWeeklyDates(startDate, endDate);
+      break;
+    case 'monthly':
+      occurrenceDates = generateMonthlyDates(startDate, endDate);
+      break;
+    default:
+      return [eventFormData];
+  }
+
+  return occurrenceDates.map((date) => ({
+    ...eventFormData,
+    date,
+  }));
 }
