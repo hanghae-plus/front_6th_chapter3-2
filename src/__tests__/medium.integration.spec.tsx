@@ -49,6 +49,7 @@ const saveSchedule = async (
   await user.type(screen.getByLabelText('위치'), location);
   await user.click(screen.getByLabelText('카테고리'));
   await user.click(within(screen.getByLabelText('카테고리')).getByRole('combobox'));
+
   await user.click(screen.getByRole('option', { name: `${category}-option` }));
 
   await user.click(screen.getByTestId('event-submit-button'));

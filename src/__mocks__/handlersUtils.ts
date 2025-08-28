@@ -1,12 +1,23 @@
 import { http, HttpResponse } from 'msw';
 
 import { server } from '../setupTests';
-import { Event } from '../types';
+import { Event, EventForm } from '../types';
+import { repeatingDates } from '../utils/repeatingDates';
 
 // ! Hard 여기 제공 안함
 export const setupMockHandlerCreation = (initEvents = [] as Event[]) => {
-  const mockEvents: Event[] = [...initEvents];
+  const mockEvents: EventForm[] = [];
 
+  initEvents.forEach((event) => {
+    if (event.repeat && event.repeat.type !== 'none') {
+      const repeated = repeatingDates(event as EventForm);
+      repeated.forEach((e) => {
+        mockEvents.push(e);
+      });
+    } else {
+      mockEvents.push(event);
+    }
+  });
   server.use(
     http.get('/api/events', () => {
       return HttpResponse.json({ events: mockEvents });
@@ -16,6 +27,28 @@ export const setupMockHandlerCreation = (initEvents = [] as Event[]) => {
       newEvent.id = String(mockEvents.length + 1); // 간단한 ID 생성
       mockEvents.push(newEvent);
       return HttpResponse.json(newEvent, { status: 201 });
+    }),
+    http.post('/api/events-list', async ({ request }) => {
+      const { events: repeatedEvents } = (await request.json()) as { events: Event[] };
+      const repeatId = String(Math.random());
+
+      const newEvents = repeatedEvents.map((event) => {
+        const isRepeatEvent = event.repeat?.type !== 'none';
+        return {
+          ...event,
+          repeat: {
+            ...event.repeat,
+            id: isRepeatEvent ? repeatId : undefined,
+          },
+          id: `${event.id}-${event.date}`,
+        };
+      });
+
+      // 기존 events 배열에 추가
+      newEvents.forEach((event) => {
+        mockEvents.push(event);
+      });
+      return HttpResponse.json(newEvents, { status: 201 });
     })
   );
 };

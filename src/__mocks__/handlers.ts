@@ -14,6 +14,29 @@ export const handlers = [
     return HttpResponse.json(newEvent, { status: 201 });
   }),
 
+  http.post('/api/events-list', async ({ request }) => {
+    const { events: repeatedEvents } = (await request.json()) as { events: Event[] };
+    const repeatId = String(Math.random());
+
+    const newEvents = repeatedEvents.map((event) => {
+      const isRepeatEvent = event.repeat?.type !== 'none';
+      return {
+        ...event,
+        repeat: {
+          ...event.repeat,
+          id: isRepeatEvent ? repeatId : undefined,
+        },
+      };
+    });
+
+    // 기존 events 배열에 추가
+    newEvents.forEach((event) => {
+      events.push(event);
+    });
+
+    return HttpResponse.json(newEvents, { status: 201 });
+  }),
+
   http.put('/api/events/:id', async ({ params, request }) => {
     const { id } = params;
     const updatedEvent = (await request.json()) as Event;
