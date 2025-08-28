@@ -141,6 +141,11 @@ function App() {
       return;
     }
 
+    if (isRepeating && repeatType === 'none') {
+      enqueueSnackbar('반복 유형을 선택해주세요.', { variant: 'error' });
+      return;
+    }
+
     // 반복 타입에 따라 겹치는 이벤트 배열 가져옴
     const overlapping = isRepeating
       ? findOverlappingRepeatEvents(getRepeatEventList(eventData), events)

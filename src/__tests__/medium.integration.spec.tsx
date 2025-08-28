@@ -5,7 +5,6 @@ import { UserEvent, userEvent } from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { SnackbarProvider } from 'notistack';
 import { ReactElement } from 'react';
-import { debug } from 'vitest-preview';
 
 import {
   setupMockHandlerCreation,
@@ -20,6 +19,17 @@ import { server } from '../setupTests';
 import { Event } from '../types';
 
 const theme = createTheme();
+const enqueueSnackbarFn = vi.fn();
+
+vi.mock('notistack', async () => {
+  const actual = await vi.importActual('notistack');
+  return {
+    ...actual,
+    useSnackbar: () => ({
+      enqueueSnackbar: enqueueSnackbarFn,
+    }),
+  };
+});
 
 // ! Hard 여기 제공 안함
 const setup = (element: ReactElement) => {
@@ -406,6 +416,34 @@ describe('반복 기능', () => {
     expect(eventList.getAllByText('정기 회의')).toHaveLength(3); // 2025-10-01, 2025-10-15, 2025-10-29
   }, 30000);
 
+  it('반복 일정 추가 시 반복 유형을 선택하지 않을 경우 토스트가 표시된다', async () => {
+    setupMockHandlerRepeatCreation();
+    const { user } = setup(<App />);
+
+    await user.click(screen.getAllByText('일정 추가')[0]);
+
+    await user.type(screen.getByLabelText('제목'), '정기 회의');
+    await user.type(screen.getByLabelText('날짜'), '2025-10-01');
+    await user.type(screen.getByLabelText('시작 시간'), '11:00');
+    await user.type(screen.getByLabelText('종료 시간'), '12:00');
+    await user.type(screen.getByLabelText('설명'), '정기 팀 미팅');
+    await user.type(screen.getByLabelText('위치'), '회의실 A');
+    await user.click(screen.getByLabelText('카테고리'));
+    await user.click(within(screen.getByLabelText('카테고리')).getByRole('combobox'));
+    await user.click(screen.getByRole('option', { name: `업무-option` }));
+
+    // 반복 일정 체크
+    const repeatCheckbox = screen.getByLabelText('반복 일정');
+    await user.click(repeatCheckbox);
+
+    // 반복 유형을 선택하지 않고 일정 추가
+    await user.click(screen.getByTestId('event-submit-button'));
+
+    expect(enqueueSnackbarFn).toHaveBeenCalledWith('반복 유형을 선택해주세요.', {
+      variant: 'error',
+    });
+  }, 30000);
+
   // 반복 일정은 제목 앞에 * 표시
   it('캘린더 뷰에서 반복 일정은 아이콘으로 표시된다', async () => {
     setupMockHandlerRepeatCreation();
@@ -516,8 +554,6 @@ describe('반복 기능', () => {
 
     // 일정 추가
     await user.click(screen.getByTestId('event-submit-button'));
-
-    debug();
 
     expect(screen.getByText('일정 겹침 경고')).toBeInTheDocument();
     expect(screen.getByText(/다음 일정과 겹칩니다/)).toBeInTheDocument();
