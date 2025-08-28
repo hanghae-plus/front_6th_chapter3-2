@@ -9,7 +9,9 @@ import { ReactElement } from 'react';
 import {
   setupMockHandlerCreation,
   setupMockHandlerDeletion,
+  setupMockHandlerDeletionRepeat,
   setupMockHandlerUpdating,
+  setupMockHandlerUpdatingRepeat,
 } from '../__mocks__/handlersUtils';
 import App from '../App';
 import { server } from '../setupTests';
@@ -79,6 +81,31 @@ describe('일정 CRUD 및 기본 기능', () => {
     expect(eventList.getByText('카테고리: 업무')).toBeInTheDocument();
   });
 
+  it('반복 일정이 등록된다.', async () => {
+    setupMockHandlerCreation();
+
+    const { user } = setup(<App />);
+
+    await user.type(screen.getByLabelText('제목'), '반복 회의');
+    await user.type(screen.getByLabelText('날짜'), '2025-10-15');
+    await user.type(screen.getByLabelText('시작 시간'), '22:00');
+    await user.type(screen.getByLabelText('종료 시간'), '23:00');
+    await user.type(screen.getByLabelText('설명'), '프로젝트 진행 상황 논의');
+    await user.type(screen.getByLabelText('위치'), '회의실 A');
+    await user.click(screen.getByLabelText('카테고리'));
+    await user.click(within(screen.getByLabelText('카테고리')).getByRole('combobox'));
+    await user.click(screen.getByRole('option', { name: '업무-option' }));
+    await user.click(screen.getByTestId('repeat-type-select'));
+    await user.click(within(screen.getByTestId('repeat-type-select')).getByRole('combobox'));
+    await user.click(screen.getByRole('option', { name: '매일' }));
+    await user.click(screen.getByLabelText('반복 종료일'));
+    await user.type(screen.getByLabelText('반복 종료일'), '2025-10-20');
+    await user.click(screen.getByTestId('event-submit-button'));
+    await user.click(screen.getByTestId('event-submit-button'));
+    const eventList = within(screen.getByTestId('event-list'));
+    expect(await eventList.findAllByText('반복 회의')).toHaveLength(6);
+  });
+
   it('기존 일정의 세부 정보를 수정하고 변경사항이 정확히 반영된다', async () => {
     const { user } = setup(<App />);
 
@@ -98,6 +125,43 @@ describe('일정 CRUD 및 기본 기능', () => {
     expect(eventList.getByText('회의 내용 변경')).toBeInTheDocument();
   });
 
+  it('반복 일정을 수정하면 해당일은 반복 일정이 해제된다', async () => {
+    setupMockHandlerUpdatingRepeat();
+
+    const { user } = setup(<App />);
+
+    await screen.findByText('일정 로딩 완료!');
+
+    const eventList = within(screen.getByTestId('event-list'));
+    expect(eventList.getAllByText('반복: 1일마다')).toHaveLength(3);
+
+    await user.click((await screen.findAllByLabelText('Edit event'))[0]);
+
+    await user.clear(screen.getByLabelText('제목'));
+    await user.type(screen.getByLabelText('제목'), '수정된 회의');
+    await user.clear(screen.getByLabelText('설명'));
+    await user.type(screen.getByLabelText('설명'), '회의 내용 변경');
+
+    await user.click(screen.getByTestId('event-submit-button'));
+
+    expect(eventList.getAllByText('반복: 1일마다')).toHaveLength(2);
+  });
+
+  it('수정모드에서는 반복 설정을 노출하지 않는다', async () => {
+    setupMockHandlerUpdatingRepeat();
+
+    const { user } = setup(<App />);
+
+    await screen.findByText('일정 로딩 완료!');
+
+    await user.click((await screen.findAllByLabelText('Edit event'))[0]);
+
+    expect(screen.queryByText('반복 일정')).not.toBeInTheDocument();
+    expect(screen.queryByText('반복 유형')).not.toBeInTheDocument();
+    expect(screen.queryByText('반복 간격')).not.toBeInTheDocument();
+    expect(screen.queryByText('반복 종료일')).not.toBeInTheDocument();
+  });
+
   it('일정을 삭제하고 더 이상 조회되지 않는지 확인한다', async () => {
     setupMockHandlerDeletion();
 
@@ -110,6 +174,22 @@ describe('일정 CRUD 및 기본 기능', () => {
     await user.click(allDeleteButton[0]);
 
     expect(eventList.queryByText('삭제할 이벤트')).not.toBeInTheDocument();
+  });
+
+  it('반복 일정을 삭제한다.', async () => {
+    setupMockHandlerDeletionRepeat();
+
+    const { user } = setup(<App />);
+
+    await screen.findByText('일정 로딩 완료!');
+
+    const eventList = within(screen.getByTestId('event-list'));
+    expect(eventList.getAllByText('반복: 1일마다')).toHaveLength(2);
+
+    const allDeleteButton = await screen.findAllByLabelText('Delete event');
+    await user.click(allDeleteButton[0]);
+
+    expect(eventList.getAllByText('반복: 1일마다')).toHaveLength(1);
   });
 });
 

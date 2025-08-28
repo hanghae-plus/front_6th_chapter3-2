@@ -1,5 +1,5 @@
 import { Event } from '../../types';
-import { getFilteredEvents } from '../../utils/eventUtils';
+import { createRecurringEvents, getFilteredEvents } from '../../utils/eventUtils';
 
 describe('getFilteredEvents', () => {
   const events: Event[] = [
@@ -112,5 +112,187 @@ describe('getFilteredEvents', () => {
   it('빈 이벤트 리스트에 대해 빈 배열을 반환한다', () => {
     const result = getFilteredEvents([], '', new Date('2025-07-01'), 'month');
     expect(result).toHaveLength(0);
+  });
+});
+
+describe('createRecurringEvents', () => {
+  const baseEvent = {
+    id: '1',
+    category: '업무',
+    title: '제목',
+    date: '2025-10-01',
+    startTime: '02:09',
+    endTime: '02:10',
+    description: '설명',
+    location: '위치',
+    notificationTime: 10,
+  };
+
+  describe('none 타입', () => {
+    it('none 타입인 경우 원본 이벤트만 반환한다', () => {
+      const event: Event = {
+        ...baseEvent,
+        repeat: { type: 'none', interval: 0 },
+      };
+      const result = createRecurringEvents(event);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(event);
+    });
+  });
+
+  describe('daily 타입', () => {
+    it('daily 타입으로 매일 반복되는 이벤트를 생성한다', () => {
+      const event: Event = {
+        ...baseEvent,
+        repeat: { type: 'daily', interval: 1, endDate: '2025-10-05' },
+      };
+      const result = createRecurringEvents(event);
+      expect(result).toHaveLength(5);
+      expect(result[0].date).toBe('2025-10-01');
+      expect(result[1].date).toBe('2025-10-02');
+      expect(result[2].date).toBe('2025-10-03');
+      expect(result[3].date).toBe('2025-10-04');
+      expect(result[4].date).toBe('2025-10-05');
+    });
+
+    it('interval이 2인 경우 2일마다 반복되는 이벤트를 생성한다', () => {
+      const event: Event = {
+        ...baseEvent,
+        repeat: { type: 'daily', interval: 2, endDate: '2025-10-10' },
+      };
+      const result = createRecurringEvents(event);
+      expect(result).toHaveLength(5);
+      expect(result[0].date).toBe('2025-10-01');
+      expect(result[1].date).toBe('2025-10-03');
+      expect(result[2].date).toBe('2025-10-05');
+      expect(result[3].date).toBe('2025-10-07');
+      expect(result[4].date).toBe('2025-10-09');
+    });
+
+    it('endDate가 없는 경우 2025-10-30까지 이벤트를 생성한다', () => {
+      const event: Event = {
+        ...baseEvent,
+        repeat: { type: 'daily', interval: 1 },
+      };
+      const result = createRecurringEvents(event);
+      expect(result).toHaveLength(30);
+      expect(result.at(-1)!.date).toBe('2025-10-30');
+    });
+  });
+
+  describe('weekly 타입', () => {
+    it('weekly 타입으로 매주 반복되는 이벤트를 생성한다', () => {
+      const event: Event = {
+        ...baseEvent,
+        repeat: { type: 'weekly', interval: 1, endDate: '2025-10-22' },
+      };
+      const result = createRecurringEvents(event);
+      expect(result).toHaveLength(4);
+      expect(result[0].date).toBe('2025-10-01');
+      expect(result[1].date).toBe('2025-10-08');
+      expect(result[2].date).toBe('2025-10-15');
+      expect(result[3].date).toBe('2025-10-22');
+    });
+
+    it('interval이 2인 경우 2주마다 반복되는 이벤트를 생성한다', () => {
+      const event: Event = {
+        ...baseEvent,
+        repeat: { type: 'weekly', interval: 2, endDate: '2025-10-29' },
+      };
+      const result = createRecurringEvents(event);
+      expect(result).toHaveLength(3);
+      expect(result[0].date).toBe('2025-10-01');
+      expect(result[1].date).toBe('2025-10-15');
+      expect(result[2].date).toBe('2025-10-29');
+    });
+  });
+
+  describe('monthly 타입', () => {
+    it('monthly 타입으로 매월 반복되는 이벤트를 생성한다', () => {
+      const event: Event = {
+        ...baseEvent,
+        repeat: { type: 'monthly', interval: 1, endDate: '2025-12-01' },
+      };
+      const result = createRecurringEvents(event);
+      expect(result).toHaveLength(3);
+      expect(result[0].date).toBe('2025-10-01');
+      expect(result[1].date).toBe('2025-11-01');
+      expect(result[2].date).toBe('2025-12-01');
+    });
+
+    it('31일로 설정된 경우 31일이 존재하는 달에만 이벤트를 생성한다', () => {
+      const event: Event = {
+        ...baseEvent,
+        date: '2025-01-31',
+        repeat: { type: 'monthly', interval: 1, endDate: '2025-06-30' },
+      };
+      const result = createRecurringEvents(event);
+      expect(result).toHaveLength(3);
+      expect(result[0].date).toBe('2025-01-31');
+      expect(result[1].date).toBe('2025-03-31');
+      expect(result[2].date).toBe('2025-05-31');
+    });
+  });
+
+  describe('yearly 타입', () => {
+    it('yearly 타입으로 매년 반복되는 이벤트를 생성한다', () => {
+      const event: Event = {
+        ...baseEvent,
+        repeat: { type: 'yearly', interval: 1, endDate: '2027-10-01' },
+      };
+      const result = createRecurringEvents(event);
+      expect(result).toHaveLength(3);
+      expect(result[0].date).toBe('2025-10-01');
+      expect(result[1].date).toBe('2026-10-01');
+      expect(result[2].date).toBe('2027-10-01');
+    });
+
+    it('2월 29일로 설정된 경우 윤년에만 이벤트를 생성한다', () => {
+      const event: Event = {
+        ...baseEvent,
+        date: '2024-02-29', // 윤년
+        repeat: { type: 'yearly', interval: 1, endDate: '2030-02-28' },
+      };
+      const result = createRecurringEvents(event);
+      expect(result).toHaveLength(2);
+      expect(result[0].date).toBe('2024-02-29');
+      expect(result[1].date).toBe('2028-02-29');
+    });
+
+    it('interval이 2인 경우 2년마다 반복되는 이벤트를 생성한다', () => {
+      const event: Event = {
+        ...baseEvent,
+        repeat: { type: 'yearly', interval: 2, endDate: '2029-10-01' },
+      };
+      const result = createRecurringEvents(event);
+      expect(result).toHaveLength(3);
+      expect(result[0].date).toBe('2025-10-01');
+      expect(result[1].date).toBe('2027-10-01');
+      expect(result[2].date).toBe('2029-10-01');
+    });
+  });
+
+  describe('edge cases', () => {
+    it('endDate가 시작일보다 이전인 경우 원본 이벤트만 반환한다', () => {
+      const event: Event = {
+        ...baseEvent,
+        repeat: { type: 'daily', interval: 1, endDate: '2025-09-30' },
+      };
+      const result = createRecurringEvents(event);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(event);
+    });
+
+    it('interval이 0인 경우 기본값 1을 사용한다', () => {
+      const event: Event = {
+        ...baseEvent,
+        repeat: { type: 'daily', interval: 0, endDate: '2025-10-03' },
+      };
+      const result = createRecurringEvents(event);
+      expect(result).toHaveLength(3);
+      expect(result[0].date).toBe('2025-10-01');
+      expect(result[1].date).toBe('2025-10-02');
+      expect(result[2].date).toBe('2025-10-03');
+    });
   });
 });
