@@ -2,6 +2,7 @@ import { useSnackbar } from 'notistack';
 import { useEffect, useState } from 'react';
 
 import { Event, EventForm } from '../types';
+import { generateRepeatDates } from '../utils/repeatUtils';
 
 export const useEventOperations = (editing: boolean, onSave?: () => void) => {
   const [events, setEvents] = useState<Event[]>([]);
@@ -24,11 +25,31 @@ export const useEventOperations = (editing: boolean, onSave?: () => void) => {
   const saveEvent = async (eventData: Event | EventForm) => {
     try {
       let response;
+      const isRepeatEvent = !editing && eventData.repeat?.type && eventData.repeat.type !== 'none';
+
       if (editing) {
         response = await fetch(`/api/events/${(eventData as Event).id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(eventData),
+        });
+      } else if (isRepeatEvent) {
+        const formData = eventData;
+        const {
+          date: startDate,
+          repeat: { type: repeatType, interval, endDate = startDate },
+        } = formData;
+
+        const dates = generateRepeatDates(startDate, repeatType, interval, endDate);
+        const eventsPayload = dates.map((date) => ({
+          ...formData,
+          date,
+        }));
+
+        response = await fetch('/api/events-list', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ events: eventsPayload }),
         });
       } else {
         response = await fetch('/api/events', {
@@ -79,5 +100,10 @@ export const useEventOperations = (editing: boolean, onSave?: () => void) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { events, fetchEvents, saveEvent, deleteEvent };
+  return {
+    events,
+    fetchEvents,
+    saveEvent,
+    deleteEvent,
+  };
 };

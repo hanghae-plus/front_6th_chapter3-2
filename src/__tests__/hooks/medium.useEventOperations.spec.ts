@@ -5,6 +5,7 @@ import {
   setupMockHandlerCreation,
   setupMockHandlerDeletion,
   setupMockHandlerUpdating,
+  setupMockHandlerCreationList,
 } from '../../__mocks__/handlersUtils.ts';
 import { useEventOperations } from '../../hooks/useEventOperations.ts';
 import { server } from '../../setupTests.ts';
@@ -68,6 +69,33 @@ it('정의된 이벤트 정보를 기준으로 적절하게 저장이 된다', a
   });
 
   expect(result.current.events).toEqual([{ ...newEvent, id: '1' }]);
+});
+
+it('반복 설정이 있는 이벤트는 반복 건 수 만큼 일정이 저장된다', async () => {
+  setupMockHandlerCreationList();
+
+  const { result } = renderHook(() => useEventOperations(false));
+
+  await act(() => Promise.resolve(null));
+
+  const repeatEvent: Event = {
+    id: 'temp',
+    title: '반복 회의',
+    date: '2025-10-20',
+    startTime: '09:00',
+    endTime: '10:00',
+    description: '반복 회의입니다',
+    location: '회의실 D',
+    category: '업무',
+    repeat: { type: 'daily', interval: 1, endDate: '2025-10-22' },
+    notificationTime: 10,
+  };
+
+  await act(async () => {
+    await result.current.saveEvent(repeatEvent);
+  });
+
+  expect(result.current.events).toHaveLength(3);
 });
 
 it("새로 정의된 'title', 'endTime' 기준으로 적절하게 일정이 업데이트 된다", async () => {
