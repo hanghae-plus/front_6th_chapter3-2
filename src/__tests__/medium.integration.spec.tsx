@@ -1,17 +1,20 @@
 import CssBaseline from '@mui/material/CssBaseline';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
-import { render, screen, within, act } from '@testing-library/react';
+import { render, screen, within, act, waitForElementToBeRemoved } from '@testing-library/react';
 import { UserEvent, userEvent } from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { SnackbarProvider } from 'notistack';
+import { OverlayProvider } from 'overlay-kit';
 import { ReactElement } from 'react';
 
 import {
   setupMockHandlerCreation,
   setupMockHandlerDeletion,
   setupMockHandlerUpdating,
+  setupMockHandlerBatchCreation,
 } from '../__mocks__/handlersUtils';
 import App from '../App';
+import { REPEAT_LABEL_MAP } from '../policy';
 import { server } from '../setupTests';
 import { Event } from '../types';
 
@@ -25,7 +28,9 @@ const setup = (element: ReactElement) => {
     ...render(
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <SnackbarProvider>{element}</SnackbarProvider>
+        <SnackbarProvider>
+          <OverlayProvider>{element}</OverlayProvider>
+        </SnackbarProvider>
       </ThemeProvider>
     ),
     user,
@@ -35,7 +40,8 @@ const setup = (element: ReactElement) => {
 // ! Hard 여기 제공 안함
 const saveSchedule = async (
   user: UserEvent,
-  form: Omit<Event, 'id' | 'notificationTime' | 'repeat'>
+  form: Omit<Event, 'id' | 'notificationTime' | 'repeat'>,
+  options?: { submit?: boolean }
 ) => {
   const { title, date, startTime, endTime, location, description, category } = form;
 
@@ -51,7 +57,42 @@ const saveSchedule = async (
   await user.click(within(screen.getByLabelText('카테고리')).getByRole('combobox'));
   await user.click(screen.getByRole('option', { name: `${category}-option` }));
 
-  await user.click(screen.getByTestId('event-submit-button'));
+  if (options?.submit !== false) {
+    await user.click(screen.getByTestId('event-submit-button'));
+  }
+};
+
+const saveRecurringSchedule = async (
+  user: UserEvent,
+  form: Omit<Event, 'id' | 'notificationTime'>,
+  options?: { submit?: boolean }
+) => {
+  const { title, date, startTime, endTime, location, description, repeat } = form;
+
+  await user.click(screen.getAllByText('일정 추가')[0]);
+
+  await user.type(screen.getByLabelText('제목'), title);
+  await user.type(screen.getByLabelText('날짜'), date);
+  await user.type(screen.getByLabelText('시작 시간'), startTime);
+  await user.type(screen.getByLabelText('종료 시간'), endTime);
+  await user.type(screen.getByLabelText('설명'), description);
+  await user.type(screen.getByLabelText('위치'), location);
+  await user.click(screen.getByLabelText('카테고리'));
+  await user.click(screen.getByLabelText('반복 일정'));
+  await user.click(screen.getByLabelText('반복 유형'));
+  await user.click(
+    screen.getByRole('option', {
+      name: `${REPEAT_LABEL_MAP[repeat.type as Exclude<Event['repeat']['type'], 'none'>]}`,
+    })
+  );
+  await user.clear(screen.getByLabelText('반복 간격'));
+  await user.type(screen.getByLabelText('반복 간격'), repeat.interval.toString());
+  await user.type(screen.getByLabelText('반복 종료일'), repeat.endDate ?? '');
+
+  if (options?.submit !== false) {
+    await user.click(screen.getByTestId('event-submit-button'));
+    await screen.findByText('반복 일정이 생성되었습니다.');
+  }
 };
 
 describe('일정 CRUD 및 기본 기능', () => {
@@ -321,6 +362,519 @@ describe('일정 충돌', () => {
     expect(screen.getByText('일정 겹침 경고')).toBeInTheDocument();
     expect(screen.getByText(/다음 일정과 겹칩니다/)).toBeInTheDocument();
     expect(screen.getByText('기존 회의 (2025-10-15 09:00-10:00)')).toBeInTheDocument();
+  });
+});
+
+describe('반복 일정 테스트', () => {
+  it('반복 일정 편집 클릭이면 다이얼로그가 표시된다', async () => {
+    setupMockHandlerBatchCreation([]);
+    const { user } = setup(<App />);
+
+    // Given 반복 일정 하나 저장
+    await saveRecurringSchedule(
+      user,
+      {
+        title: '반복 회의',
+        date: '2025-10-01',
+        startTime: '09:00',
+        endTime: '10:00',
+        description: '반복 테스트',
+        location: '회의실 A',
+        category: '업무',
+        repeat: { type: 'weekly', interval: 1, endDate: '2025-10-29' },
+      },
+      { submit: false }
+    );
+
+    await user.click(screen.getByTestId('event-submit-button'));
+    await screen.findByText('반복 일정이 생성되었습니다.');
+
+    // When 리스트 첫 항목의 Edit 클릭
+    const editButtons = await screen.findAllByLabelText('Edit event');
+    await user.click(editButtons[0]);
+
+    // Then 다이얼로그 표시
+    expect(
+      await screen.findByRole('dialog', { name: /반복 일정을 수정하시겠어요/ })
+    ).toBeInTheDocument();
+  });
+
+  it('이 일정만 수정 선택이면 편집 모드로 진입한다', async () => {
+    setupMockHandlerBatchCreation([]);
+    const { user } = setup(<App />);
+
+    // Given 반복 일정 생성
+    await saveRecurringSchedule(user, {
+      title: '반복 회의',
+      date: '2025-10-01',
+      startTime: '09:00',
+      endTime: '10:00',
+      description: '반복 테스트',
+      location: '회의실 A',
+      category: '업무',
+      repeat: {
+        type: 'weekly',
+        interval: 1,
+        endDate: '2025-10-29',
+      },
+    });
+
+    // When 편집 클릭 후 "이 일정만 수정" 선택
+    const editButtons = await screen.findAllByLabelText('Edit event');
+    await user.click(editButtons[0]);
+    const onlyThisBtn = await screen.findByRole('button', { name: '이 일정만 수정' });
+    await user.click(onlyThisBtn);
+
+    // Then 편집 모드 진입(제목 입력창이 해당 일정 제목으로 채워짐)
+    expect(await screen.findByDisplayValue('반복 회의')).toBeInTheDocument();
+  });
+
+  it('취소 선택이면 변경 없이 종료된다', async () => {
+    setupMockHandlerBatchCreation([]);
+    const { user } = setup(<App />);
+
+    // Given 반복 일정 생성
+    await saveRecurringSchedule(user, {
+      title: '반복 회의',
+      date: '2025-10-01',
+      startTime: '09:00',
+      endTime: '10:00',
+      description: '반복 테스트',
+      location: '회의실 A',
+      category: '업무',
+      repeat: {
+        type: 'weekly',
+        interval: 1,
+        endDate: '2025-10-29',
+      },
+    });
+
+    // When 편집 클릭 후 "취소" 선택
+    const editButtons = await screen.findAllByLabelText('Edit event');
+    await user.click(editButtons[0]);
+    const cancelBtn = await screen.findByRole('button', { name: '취소' });
+    await user.click(cancelBtn);
+
+    // Then 다이얼로그가 사라지고, 폼은 편집 모드로 진입하지 않음(제목 입력값이 비어 있음)
+    await waitForElementToBeRemoved(() =>
+      screen.getByRole('dialog', { name: /반복 일정을 수정하시겠어요/ })
+    );
+    expect(screen.getByLabelText('제목')).toHaveValue('');
+  });
+
+  it('반복 일정이 켜져 있으면 반복 필드가 표시된다', async () => {
+    // Given 앱이 렌더링되면
+    const { user } = setup(<App />);
+
+    // When 반복일정 체크박스를 클릭하면
+    const checkbox = screen.getByRole('checkbox', { name: '반복 일정' });
+    await user.click(checkbox);
+    expect(checkbox).toBeChecked();
+
+    // Then 반복 유형/간격/종료일 필드가 표시된다
+    expect(screen.getByLabelText('반복 유형')).toBeInTheDocument();
+    expect(screen.getByLabelText('반복 간격')).toBeInTheDocument();
+    expect(screen.getByLabelText('반복 종료일')).toBeInTheDocument();
+  });
+
+  it('반복 유형 드롭다운을 열면 네 가지 옵션이 보인다', async () => {
+    // Given 반복 필드가 표시되면
+    const { user } = setup(<App />);
+
+    const checkbox = screen.getByRole('checkbox', { name: '반복 일정' });
+    await user.click(checkbox);
+    expect(checkbox).toBeChecked();
+
+    // When 드롭다운을 열면
+    await user.click(screen.getByLabelText('반복 유형'));
+
+    // Then 네 가지 옵션이 보인다
+    expect(screen.getByRole('option', { name: '매일' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: '매주' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: '매월' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: '매년' })).toBeInTheDocument();
+  });
+
+  it('종료일은 2025-10-30까지만 선택할 수 있다', async () => {
+    // Given 반복 필드가 표시되면
+    const { user } = setup(<App />);
+
+    const checkbox = screen.getByRole('checkbox', { name: '반복 일정' });
+    await user.click(checkbox);
+    expect(checkbox).toBeChecked();
+
+    // When 종료일 입력 요소를 확인하면
+    const endDateInput = screen.getByLabelText('반복 종료일');
+
+    // Then max 속성이 2025-10-30으로 설정된다
+    expect(endDateInput).toHaveAttribute('max', '2025-10-30');
+  });
+
+  it('반복 일정 저장 시 성공 스낵바가 노출된다', async () => {
+    setupMockHandlerBatchCreation();
+
+    const { user } = setup(<App />);
+    await saveRecurringSchedule(
+      user,
+      {
+        title: '반복 회의',
+        date: '2025-10-01',
+        startTime: '09:00',
+        endTime: '10:00',
+        description: '반복 테스트',
+        location: '회의실 A',
+        category: '업무',
+        repeat: { type: 'weekly', interval: 1, endDate: '2025-10-29' },
+      },
+      { submit: true }
+    );
+
+    expect(await screen.findByText('반복 일정이 생성되었습니다.')).toBeInTheDocument();
+  });
+
+  it('Week 뷰에 반복 일정이 표시된다', async () => {
+    setupMockHandlerBatchCreation();
+
+    const { user } = setup(<App />);
+    await saveRecurringSchedule(
+      user,
+      {
+        title: '반복 회의',
+        date: '2025-10-01',
+        startTime: '09:00',
+        endTime: '10:00',
+        description: '반복 테스트',
+        location: '회의실 A',
+        category: '업무',
+        repeat: { type: 'weekly', interval: 1, endDate: '2025-10-29' },
+      },
+      { submit: true }
+    );
+
+    await user.click(within(screen.getByLabelText('뷰 타입 선택')).getByRole('combobox'));
+    await user.click(screen.getByRole('option', { name: 'week-option' }));
+    const weekView = within(screen.getByTestId('week-view'));
+    expect(await weekView.findByText('반복 회의')).toBeInTheDocument();
+  });
+
+  it('Month 뷰에 반복 일정이 표시된다', async () => {
+    setupMockHandlerBatchCreation();
+
+    const { user } = setup(<App />);
+    await saveRecurringSchedule(
+      user,
+      {
+        title: '반복 회의',
+        date: '2025-10-01',
+        startTime: '09:00',
+        endTime: '10:00',
+        description: '반복 테스트',
+        location: '회의실 A',
+        category: '업무',
+        repeat: { type: 'weekly', interval: 1, endDate: '2025-10-29' },
+      },
+      { submit: true }
+    );
+
+    await user.click(within(screen.getByLabelText('뷰 타입 선택')).getByRole('combobox'));
+    await user.click(screen.getByRole('option', { name: 'month-option' }));
+    const monthView = within(screen.getByTestId('month-view'));
+    const monthHeader = screen.getByText(/\d{4}년 \d+월/);
+    if (!/2025년 10월/.test(monthHeader.textContent || '')) {
+      await user.click(screen.getByLabelText('Next'));
+    }
+    const items = await monthView.findAllByText('반복 회의');
+    expect(items.length).toBeGreaterThan(0);
+  });
+
+  it('이 일정만 수정 후 저장하면 해당 이벤트만 반복 표시가 사라진다', async () => {
+    // Given 월 단위 반복 일정이 생성되어 있을 때
+    const mockEvents = setupMockHandlerBatchCreation([]);
+
+    // PUT 핸들러만 별도 추가 (mockEvents 배열 업데이트)
+    server.use(
+      http.put('/api/events/:id', async ({ params, request }) => {
+        const { id } = params;
+        const updatedEvent = (await request.json()) as Event;
+
+        // mockEvents 배열에서 해당 이벤트 찾아서 업데이트
+        const index = mockEvents.findIndex((event) => event.id === id);
+        if (index !== -1) {
+          mockEvents[index] = { ...mockEvents[index], ...updatedEvent };
+        }
+
+        return HttpResponse.json(mockEvents[index]);
+      })
+    );
+
+    const { user } = setup(<App />);
+    await saveRecurringSchedule(
+      user,
+      {
+        title: '반복 회의',
+        date: '2025-10-01',
+        startTime: '09:00',
+        endTime: '10:00',
+        description: '반복 테스트',
+        location: '회의실 A',
+        category: '업무',
+        repeat: { type: 'monthly', interval: 1, endDate: '2025-11-29' },
+      },
+      { submit: true }
+    );
+
+    // When 첫 번째 항목을 편집하고 "이 일정만 수정"을 선택하여 저장하면
+    const editButtons = await screen.findAllByLabelText('Edit event');
+    await user.click(editButtons[0]);
+    const onlyThisBtn = await screen.findByRole('button', { name: '이 일정만 수정' });
+    await user.click(onlyThisBtn);
+    await user.click(screen.getByTestId('event-submit-button'));
+
+    // Then 해당 이벤트는 존재하지만 반복 일정 아이콘은 사라진다
+    const eventList = within(screen.getByTestId('event-list'));
+    expect(eventList.getByText('반복 회의')).toBeInTheDocument();
+    expect(eventList.queryByLabelText('반복 일정 아이콘')).toBeNull();
+  });
+
+  it('단일 수정 후 나머지 반복 일정들의 그룹이 유지된다', async () => {
+    const mockEvents = setupMockHandlerBatchCreation([]);
+
+    // PUT 핸들러 추가 (mockEvents 배열 업데이트)
+    server.use(
+      http.put('/api/events/:id', async ({ params, request }) => {
+        const { id } = params;
+        const updatedEvent = (await request.json()) as Event;
+
+        const index = mockEvents.findIndex((event) => event.id === id);
+        if (index !== -1) {
+          mockEvents[index] = { ...mockEvents[index], ...updatedEvent };
+        }
+
+        return HttpResponse.json(mockEvents[index]);
+      })
+    );
+
+    const { user } = setup(<App />);
+
+    // Given 주간 반복 일정 생성 (5개 인스턴스)
+    await saveRecurringSchedule(
+      user,
+      {
+        title: '그룹 무결성 테스트',
+        date: '2025-10-01',
+        startTime: '09:00',
+        endTime: '10:00',
+        description: '무결성 검증',
+        location: '회의실 A',
+        category: '업무',
+        repeat: { type: 'weekly', interval: 1, endDate: '2025-10-29' },
+      },
+      { submit: true }
+    );
+
+    // When 첫 번째 인스턴스를 단일 수정
+    const editButtons = await screen.findAllByLabelText('Edit event');
+    await user.click(editButtons[0]);
+
+    const onlyThisBtn = await screen.findByRole('button', { name: '이 일정만 수정' });
+    await user.click(onlyThisBtn);
+
+    // 제목 변경
+    const titleInput = screen.getByDisplayValue('그룹 무결성 테스트');
+    await user.clear(titleInput);
+    await user.type(titleInput, '단일 수정된 이벤트');
+
+    await user.click(screen.getByTestId('event-submit-button'));
+
+    // Then 첫 번째 이벤트는 단일 이벤트로 변환되고 반복 아이콘이 사라짐
+    const eventList = within(screen.getByTestId('event-list'));
+    expect(eventList.getByText('단일 수정된 이벤트')).toBeInTheDocument();
+
+    // And 나머지 4개 인스턴스는 여전히 반복 그룹으로 유지됨
+    const remainingRecurringEvents = eventList.queryAllByText('그룹 무결성 테스트');
+    expect(remainingRecurringEvents).toHaveLength(4);
+
+    // And 나머지 인스턴스들은 반복 아이콘을 유지함
+    const recurringIcons = screen.getAllByLabelText('반복 일정 아이콘');
+    expect(recurringIcons.length).toBeGreaterThanOrEqual(4);
+
+    // And 단일 수정된 이벤트는 반복 아이콘이 없음
+    const singleEventText = eventList.getByText('단일 수정된 이벤트');
+    const singleEventContainer = singleEventText.closest('[data-testid="event-item"]');
+    expect(singleEventContainer?.querySelector('[aria-label="반복 일정 아이콘"]')).toBeNull();
+  });
+
+  it('반복 일정 삭제 클릭 시 확인 다이얼로그가 표시된다', async () => {
+    setupMockHandlerBatchCreation([]);
+    const { user } = setup(<App />);
+
+    // Given 반복 일정 생성
+    await saveRecurringSchedule(user, {
+      title: '삭제할 반복 회의',
+      date: '2025-10-01',
+      startTime: '09:00',
+      endTime: '10:00',
+      description: '삭제 테스트',
+      location: '회의실 A',
+      category: '업무',
+      repeat: {
+        type: 'weekly',
+        interval: 1,
+        endDate: '2025-10-29',
+      },
+    });
+
+    // When 삭제 버튼 클릭
+    const deleteButtons = await screen.findAllByLabelText('Delete event');
+    await user.click(deleteButtons[0]);
+
+    // Then 삭제 확인 다이얼로그가 표시됨
+    const dialog = await screen.findByRole('dialog', { name: /반복 일정을 삭제하시겠어요/ });
+    expect(dialog).toBeInTheDocument();
+
+    const dialogContent = within(dialog);
+    expect(dialogContent.getByText('이 작업은 되돌릴 수 없습니다.')).toBeInTheDocument();
+    expect(dialogContent.getByText(/삭제할 반복 회의/)).toBeInTheDocument();
+    expect(dialogContent.getByText(/2025-10-01.*09:00-10:00/)).toBeInTheDocument();
+  });
+
+  it('삭제 다이얼로그에서 취소 선택 시 변경 없이 종료된다', async () => {
+    setupMockHandlerBatchCreation([]);
+    const { user } = setup(<App />);
+
+    // Given 반복 일정 생성
+    await saveRecurringSchedule(user, {
+      title: '삭제할 반복 회의',
+      date: '2025-10-01',
+      startTime: '09:00',
+      endTime: '10:00',
+      description: '삭제 테스트',
+      location: '회의실 A',
+      category: '업무',
+      repeat: {
+        type: 'weekly',
+        interval: 1,
+        endDate: '2025-10-29',
+      },
+    });
+
+    // When 삭제 버튼 클릭 후 취소 선택
+    const deleteButtons = await screen.findAllByLabelText('Delete event');
+    await user.click(deleteButtons[0]);
+    const cancelBtn = await screen.findByRole('button', { name: '취소' });
+    await user.click(cancelBtn);
+
+    // Then 다이얼로그가 사라지고 일정은 그대로 남아있음
+    await waitForElementToBeRemoved(() =>
+      screen.getByRole('dialog', { name: /반복 일정을 삭제하시겠어요/ })
+    );
+    const eventList = within(screen.getByTestId('event-list'));
+    expect(eventList.getAllByText('삭제할 반복 회의')[0]).toBeInTheDocument();
+  });
+
+  it('이 일정만 삭제 선택 시 해당 일정이 삭제된다', async () => {
+    const mockEvents = setupMockHandlerBatchCreation([]);
+    const { user } = setup(<App />);
+
+    // Given 반복 일정 생성
+    await saveRecurringSchedule(user, {
+      title: '삭제할 반복 회의',
+      date: '2025-10-01',
+      startTime: '09:00',
+      endTime: '10:00',
+      description: '삭제 테스트',
+      location: '회의실 A',
+      category: '업무',
+      repeat: {
+        type: 'weekly',
+        interval: 1,
+        endDate: '2025-10-29',
+      },
+    });
+
+    // DELETE 핸들러 추가
+    server.use(
+      http.delete('/api/events/:id', ({ params }) => {
+        const { id } = params;
+        const index = mockEvents.findIndex((event) => event.id === id);
+        if (index !== -1) {
+          mockEvents.splice(index, 1);
+        }
+        return HttpResponse.json({ success: true }, { status: 200 });
+      })
+    );
+
+    // When 삭제 버튼 클릭 후 "이 일정만 삭제" 선택
+    const deleteButtons = await screen.findAllByLabelText('Delete event');
+    await user.click(deleteButtons[0]);
+    const deleteBtn = await screen.findByRole('button', { name: '이 일정만 삭제' });
+    await user.click(deleteBtn);
+
+    // Then 성공 메시지가 표시되고 일정이 목록에서 사라짐
+    await screen.findByText('일정이 삭제되었습니다.');
+    const eventList = within(screen.getByTestId('event-list'));
+    // 원래 5개에서 1개가 삭제되어 4개가 남아있어야 함
+    expect(eventList.queryAllByText('삭제할 반복 회의')).toHaveLength(4);
+  });
+
+  it('반복 일정 단일 삭제 후 나머지 반복 일정들이 반복 아이콘과 함께 표시된다', async () => {
+    const mockEvents = setupMockHandlerBatchCreation([]);
+    const { user } = setup(<App />);
+
+    // Given 반복 일정 생성 (5개 인스턴스)
+    await saveRecurringSchedule(user, {
+      title: '삭제 테스트 반복 회의',
+      date: '2025-10-01',
+      startTime: '09:00',
+      endTime: '10:00',
+      description: '삭제 테스트',
+      location: '회의실 A',
+      category: '업무',
+      repeat: {
+        type: 'weekly',
+        interval: 1,
+        endDate: '2025-10-29',
+      },
+    });
+
+    // 초기 상태: 5개의 반복 일정이 모두 반복 아이콘과 함께 표시
+    const eventList = within(screen.getByTestId('event-list'));
+    const initialEvents = eventList.queryAllByText('삭제 테스트 반복 회의');
+    expect(initialEvents).toHaveLength(5);
+
+    // 모든 인스턴스에 반복 아이콘이 있는지 확인
+    const recurringIcons = screen.getAllByLabelText('반복 일정 아이콘');
+    expect(recurringIcons.length).toBeGreaterThanOrEqual(5);
+
+    // DELETE 핸들러 추가
+    server.use(
+      http.delete('/api/events/:id', ({ params }) => {
+        const { id } = params;
+        const index = mockEvents.findIndex((event) => event.id === id);
+        if (index !== -1) {
+          mockEvents.splice(index, 1);
+        }
+        return HttpResponse.json({ success: true }, { status: 200 });
+      })
+    );
+
+    // When 첫 번째 인스턴스 삭제
+    const deleteButtons = await screen.findAllByLabelText('Delete event');
+    await user.click(deleteButtons[0]);
+
+    const deleteButton = await screen.findByRole('button', { name: '이 일정만 삭제' });
+    await user.click(deleteButton);
+
+    // Then 삭제 성공 메시지 확인
+    await screen.findByText('일정이 삭제되었습니다.');
+
+    // 4개의 인스턴스가 남아있고 모두 반복 아이콘과 함께 표시되어야 함
+    const remainingEvents = eventList.queryAllByText('삭제 테스트 반복 회의');
+    expect(remainingEvents).toHaveLength(4);
+
+    // 나머지 인스턴스들이 여전히 반복 아이콘을 가지고 있는지 확인
+    const remainingRecurringIcons = screen.getAllByLabelText('반복 일정 아이콘');
+    expect(remainingRecurringIcons.length).toBeGreaterThanOrEqual(4);
   });
 });
 
