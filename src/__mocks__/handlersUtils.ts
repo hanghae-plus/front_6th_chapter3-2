@@ -16,6 +16,15 @@ export const setupMockHandlerCreation = (initEvents = [] as Event[]) => {
       newEvent.id = String(mockEvents.length + 1); // 간단한 ID 생성
       mockEvents.push(newEvent);
       return HttpResponse.json(newEvent, { status: 201 });
+    }),
+    http.post('/api/events-list', async ({ request }) => {
+      const { events } = (await request.json()) as { events: Omit<Event, 'id'>[] };
+      const saved = events.map((e, i) => ({
+        ...e,
+        id: String(mockEvents.length + i + 1),
+      })) as Event[];
+      mockEvents.push(...saved);
+      return HttpResponse.json({ events: saved }, { status: 201 });
     })
   );
 };
@@ -88,6 +97,53 @@ export const setupMockHandlerDeletion = () => {
       const index = mockEvents.findIndex((event) => event.id === id);
 
       mockEvents.splice(index, 1);
+      return new HttpResponse(null, { status: 204 });
+    })
+  );
+};
+
+export const setupMockHandlerRepeatDelete = () => {
+  const mockEvents: Event[] = [
+    {
+      id: 'daily-1',
+      title: '매일 회의',
+      date: '2025-10-15',
+      startTime: '09:00',
+      endTime: '10:00',
+      repeat: { type: 'daily', interval: 1 },
+      notificationTime: 0,
+    },
+    {
+      id: 'daily-2',
+      title: '매일 회의',
+      date: '2025-10-16',
+      startTime: '09:00',
+      endTime: '10:00',
+      repeat: { type: 'daily', interval: 1 },
+      notificationTime: 0,
+    },
+    {
+      id: 'daily-3',
+      title: '매일 회의',
+      date: '2025-10-17',
+      startTime: '09:00',
+      endTime: '10:00',
+      repeat: { type: 'daily', interval: 1 },
+      notificationTime: 0,
+    },
+  ];
+
+  server.use(
+    http.get('/api/events', () => {
+      return HttpResponse.json({ events: mockEvents });
+    }),
+    http.delete('/api/events/:id', ({ params }) => {
+      const { id } = params;
+      const index = mockEvents.findIndex((event) => event.id === id);
+
+      if (index !== -1) {
+        mockEvents.splice(index, 1);
+      }
       return new HttpResponse(null, { status: 204 });
     })
   );

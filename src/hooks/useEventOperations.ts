@@ -2,6 +2,7 @@ import { useSnackbar } from 'notistack';
 import { useEffect, useState } from 'react';
 
 import { Event, EventForm } from '../types';
+import { generateRecurringEvents } from '../utils/eventUtils';
 
 export const useEventOperations = (editing: boolean, onSave?: () => void) => {
   const [events, setEvents] = useState<Event[]>([]);
@@ -31,11 +32,30 @@ export const useEventOperations = (editing: boolean, onSave?: () => void) => {
           body: JSON.stringify(eventData),
         });
       } else {
-        response = await fetch('/api/events', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(eventData),
-        });
+        // NOTE: 깊은 복사를 통해 eventData가 예상치 못하게 변경되는 것을 방지합니다.
+        const newEventData = JSON.parse(JSON.stringify(eventData));
+
+        if (newEventData.repeat.type !== 'none' && !newEventData.repeat.endDate) {
+          newEventData.repeat.endDate = '2025-06-30';
+        }
+
+        if (newEventData.repeat.type !== 'none' && newEventData.repeat.endDate) {
+          const recurringEvents = generateRecurringEvents(
+            newEventData as EventForm,
+            newEventData.repeat.endDate
+          );
+          response = await fetch('/api/events-list', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ events: recurringEvents }),
+          });
+        } else {
+          response = await fetch('/api/events', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newEventData),
+          });
+        }
       }
 
       if (!response.ok) {
@@ -76,7 +96,6 @@ export const useEventOperations = (editing: boolean, onSave?: () => void) => {
 
   useEffect(() => {
     init();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return { events, fetchEvents, saveEvent, deleteEvent };

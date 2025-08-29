@@ -1,4 +1,10 @@
-import { Notifications, ChevronLeft, ChevronRight, Delete, Edit, Close } from '@mui/icons-material';
+import ChevronLeft from '@mui/icons-material/ChevronLeft';
+import ChevronRight from '@mui/icons-material/ChevronRight';
+import Close from '@mui/icons-material/Close';
+import Delete from '@mui/icons-material/Delete';
+import Edit from '@mui/icons-material/Edit';
+import Notifications from '@mui/icons-material/Notifications';
+import Repeat from '@mui/icons-material/Repeat';
 import {
   Alert,
   AlertTitle,
@@ -36,7 +42,7 @@ import { useEventOperations } from './hooks/useEventOperations.ts';
 import { useNotifications } from './hooks/useNotifications.ts';
 import { useSearch } from './hooks/useSearch.ts';
 // import { Event, EventForm, RepeatType } from './types';
-import { Event, EventForm } from './types';
+import { Event, EventForm, RepeatType } from './types';
 import {
   formatDate,
   formatMonth,
@@ -77,11 +83,11 @@ function App() {
     isRepeating,
     setIsRepeating,
     repeatType,
-    // setRepeatType,
+    setRepeatType,
     repeatInterval,
-    // setRepeatInterval,
+    setRepeatInterval,
     repeatEndDate,
-    // setRepeatEndDate,
+    setRepeatEndDate,
     notificationTime,
     setNotificationTime,
     startTimeError,
@@ -108,6 +114,11 @@ function App() {
   const { enqueueSnackbar } = useSnackbar();
 
   const addOrUpdateEvent = async () => {
+    if (isRepeating && repeatType === 'none') {
+      enqueueSnackbar('반복 유형을 선택해 주세요.', { variant: 'error' });
+      return;
+    }
+
     if (!title || !date || !startTime || !endTime) {
       enqueueSnackbar('필수 정보를 모두 입력해주세요.', { variant: 'error' });
       return;
@@ -134,6 +145,13 @@ function App() {
       },
       notificationTime,
     };
+
+    // 반복 일정을 수정하면 단일 일정으로 변경됩니다.
+    if (editingEvent && editingEvent.repeat.type !== 'none') {
+      eventData.repeat.type = 'none';
+      eventData.repeat.interval = 0;
+      eventData.repeat.endDate = undefined;
+    }
 
     const overlapping = findOverlappingEvents(eventData, events);
     if (overlapping.length > 0) {
@@ -200,6 +218,9 @@ function App() {
                             }}
                           >
                             <Stack direction="row" spacing={1} alignItems="center">
+                              {event.repeat.type !== 'none' && (
+                                <Repeat data-testid="repeat-icon" fontSize="small" />
+                              )}
                               {isNotified && <Notifications fontSize="small" />}
                               <Typography
                                 variant="caption"
@@ -287,6 +308,9 @@ function App() {
                                   }}
                                 >
                                   <Stack direction="row" spacing={1} alignItems="center">
+                                    {event.repeat.type !== 'none' && (
+                                      <Repeat data-testid="repeat-icon" fontSize="small" />
+                                    )}
                                     {isNotified && <Notifications fontSize="small" />}
                                     <Typography
                                       variant="caption"
@@ -420,7 +444,6 @@ function App() {
               label="반복 일정"
             />
           </FormControl>
-
           <FormControl fullWidth>
             <FormLabel htmlFor="notification">알림 설정</FormLabel>
             <Select
@@ -437,16 +460,19 @@ function App() {
             </Select>
           </FormControl>
 
-          {/* ! 반복은 8주차 과제에 포함됩니다. 구현하고 싶어도 참아주세요~ */}
-          {/* {isRepeating && (
-            <Stack spacing={2}>
+          {isRepeating && (
+            <Stack spacing={2} data-testid="repeat-section">
               <FormControl fullWidth>
                 <FormLabel>반복 유형</FormLabel>
                 <Select
                   size="small"
                   value={repeatType}
                   onChange={(e) => setRepeatType(e.target.value as RepeatType)}
+                  defaultValue="none"
                 >
+                  <MenuItem value="none" style={{ display: 'none' }}>
+                    None
+                  </MenuItem>
                   <MenuItem value="daily">매일</MenuItem>
                   <MenuItem value="weekly">매주</MenuItem>
                   <MenuItem value="monthly">매월</MenuItem>
@@ -475,7 +501,7 @@ function App() {
                 </FormControl>
               </Stack>
             </Stack>
-          )} */}
+          )}
 
           <Button
             data-testid="event-submit-button"
