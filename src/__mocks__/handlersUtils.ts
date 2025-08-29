@@ -16,6 +16,14 @@ export const setupMockHandlerCreation = (initEvents = [] as Event[]) => {
       newEvent.id = String(mockEvents.length + 1); // 간단한 ID 생성
       mockEvents.push(newEvent);
       return HttpResponse.json(newEvent, { status: 201 });
+    }),
+    http.post('/api/events-list', async ({ request }) => {
+      const { events } = (await request.json()) as { events: Event[] };
+      events.forEach((event) => {
+        event.id = String(mockEvents.length + 1);
+        mockEvents.push(event);
+      });
+      return HttpResponse.json(events, { status: 201 });
     })
   );
 };
@@ -59,6 +67,14 @@ export const setupMockHandlerUpdating = () => {
 
       mockEvents[index] = { ...mockEvents[index], ...updatedEvent };
       return HttpResponse.json(mockEvents[index]);
+    }),
+    http.post('/api/events-list', async ({ request }) => {
+      const { events } = (await request.json()) as { events: Event[] };
+      events.forEach((event) => {
+        event.id = String(mockEvents.length + 1);
+        mockEvents.push(event);
+      });
+      return HttpResponse.json(events, { status: 201 });
     })
   );
 };
@@ -89,6 +105,14 @@ export const setupMockHandlerDeletion = () => {
 
       mockEvents.splice(index, 1);
       return new HttpResponse(null, { status: 204 });
+    }),
+    http.post('/api/events-list', async ({ request }) => {
+      const { events } = (await request.json()) as { events: Event[] };
+      events.forEach((event) => {
+        event.id = String(mockEvents.length + 1);
+        mockEvents.push(event);
+      });
+      return HttpResponse.json(events, { status: 201 });
     })
   );
 };

@@ -56,3 +56,85 @@ export function getFilteredEvents(
 
   return searchedEvents;
 }
+
+export function createRepeatEvents(events: Event[]) {
+  const createdEvents: Event[] = [];
+
+  events.forEach((event) => {
+    const { type, endDate } = event.repeat;
+
+    if (type === 'none') {
+      createdEvents.push(event);
+      return;
+    }
+
+    const startDate = new Date(event.date);
+    const repeatEndDate = new Date(endDate ?? '');
+
+    const push = (d: Date) => {
+      if (d <= repeatEndDate) {
+        createdEvents.push({
+          ...event,
+          date: d.toISOString().split('T')[0],
+        });
+      }
+    };
+
+    if (type === 'daily') {
+      for (let d = new Date(startDate); d <= repeatEndDate; d.setDate(d.getDate() + 1)) {
+        push(new Date(d));
+      }
+      return;
+    }
+
+    if (type === 'weekly') {
+      for (let d = new Date(startDate); d <= repeatEndDate; d.setDate(d.getDate() + 7)) {
+        push(new Date(d));
+      }
+      return;
+    }
+
+    if (type === 'monthly') {
+      const anchorDay = startDate.getDate();
+      let y = startDate.getFullYear();
+      let m = startDate.getMonth();
+
+      while (true) {
+        const candidate = new Date(y, m, anchorDay);
+
+        if (candidate > repeatEndDate) break;
+
+        if (candidate.getMonth() === m && candidate.getDate() === anchorDay) {
+          push(candidate);
+        }
+
+        m += 1;
+        if (m > 11) {
+          m = 0;
+          y += 1;
+        }
+      }
+      return;
+    }
+
+    if (type === 'yearly') {
+      const anchorDay = startDate.getDate();
+      const anchorMonth = startDate.getMonth();
+      let y = startDate.getFullYear();
+
+      while (true) {
+        const candidate = new Date(y, anchorMonth, anchorDay);
+
+        if (candidate > repeatEndDate) break;
+
+        if (candidate.getMonth() === anchorMonth && candidate.getDate() === anchorDay) {
+          push(candidate);
+        }
+        y += 1;
+      }
+      return;
+    }
+  });
+
+  return createdEvents;
+}
