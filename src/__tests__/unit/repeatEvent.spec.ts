@@ -1,0 +1,441 @@
+import { describe, test, expect } from 'vitest';
+
+import { Event } from '../../types';
+import {
+  generateRepeatDates,
+  updateAllRepeatEvents,
+  deleteAllRepeatEvents,
+} from '../../utils/dateUtils';
+
+describe('31일 기준 매월 반복 처리', () => {
+  test('31일이 없는 달은 제외된다', () => {
+    // Given: 31일 기준 매월 반복 설정이 주어졌을 때
+    const baseEvent: Event = {
+      id: 'test-1',
+      title: '31일 반복 일정',
+      date: '2024-01-31',
+      startTime: '10:00',
+      endTime: '11:00',
+      description: '',
+      location: '',
+      category: '',
+      repeat: {
+        type: 'monthly',
+        interval: 1,
+        endDate: '2024-07-31',
+      },
+      notificationTime: 0,
+    };
+
+    // When: 다음 6개월의 반복 날짜를 계산할 때
+    const endDate = new Date('2024-07-31');
+    const repeatDates = generateRepeatDates(baseEvent, endDate);
+
+    // Then: 31일이 없는 달(2월, 4월, 6월, 9월, 11월)은 제외되어야 한다
+    const expectedDates = [
+      '2024-01-31', // 원본
+      '2024-03-31', // 3월 31일 (2월 건너뜀)
+      '2024-05-31', // 5월 31일 (4월 건너뜀)
+      '2024-07-31', // 7월 31일 (6월 건너뜀)
+    ];
+
+    expect(repeatDates).toEqual(expectedDates);
+  });
+});
+
+describe('윤년 2월 29일 매년 반복 처리', () => {
+  test('평년에는 해당 날짜가 생성되지 않는다', () => {
+    // Given: 윤년 2024년 2월 29일 기준 매년 반복 설정이 주어졌을 때
+    const baseEvent: Event = {
+      id: 'test-2',
+      title: '윤년 반복 일정',
+      date: '2024-02-29',
+      startTime: '09:00',
+      endTime: '10:00',
+      description: '',
+      location: '',
+      category: '',
+      repeat: {
+        type: 'yearly',
+        interval: 1,
+        endDate: '2028-12-31',
+      },
+      notificationTime: 0,
+    };
+
+    // When: 다음 4년의 반복 날짜를 계산할 때
+    const endDate = new Date('2028-12-31');
+    const repeatDates = generateRepeatDates(baseEvent, endDate);
+
+    // Then: 평년(2025, 2026, 2027)에는 해당 날짜가 생성되지 않아야 한다
+    // 2028년은 윤년이므로 2월 29일이 생성되어야 함
+    const expectedDates = [
+      '2024-02-29', // 원본 (2024년은 윤년)
+      '2028-02-29', // 2028년은 윤년이므로 생성됨
+      // 2025, 2026, 2027년은 평년이므로 2월 29일이 없어서 제외됨
+    ];
+
+    expect(repeatDates).toEqual(expectedDates);
+  });
+});
+
+describe('반복 종료 조건 처리', () => {
+  test('특정 날짜까지 종료 조건이 적용된다', () => {
+    // Given: 반복 일정과 "특정 날짜까지" 종료 조건이 주어졌을 때
+    const baseEvent: Event = {
+      id: 'test-3',
+      title: '종료 날짜 테스트',
+      date: '2024-01-01',
+      startTime: '14:00',
+      endTime: '15:00',
+      description: '',
+      location: '',
+      category: '',
+      repeat: {
+        type: 'monthly',
+        interval: 1,
+        endDate: '2024-03-15', // 3월 15일까지만
+      },
+      notificationTime: 0,
+    };
+
+    // When: 반복 일정을 생성할 때
+    const endDate = new Date('2024-12-31'); // 더 큰 범위로 설정
+    const repeatDates = generateRepeatDates(baseEvent, endDate);
+
+    // Then: 지정한 종료 날짜를 넘지 않는 일정들만 반환되어야 한다
+    const expectedDates = [
+      '2024-01-01', // 원본
+      '2024-02-01', // 2월 1일
+      '2024-03-01', // 3월 1일 (3월 15일 이전이므로 포함)
+      // '2024-04-01'은 endDate(3월 15일) 이후이므로 제외됨
+    ];
+
+    expect(repeatDates).toEqual(expectedDates);
+  });
+
+  test('특정 횟수만큼 종료 조건이 적용된다', () => {
+    // Given: 반복 일정과 "특정 횟수만큼" 종료 조건이 주어졌을 때
+    const baseEvent: Event = {
+      id: 'test-count',
+      title: '횟수 제한 테스트',
+      date: '2024-01-01',
+      startTime: '14:00',
+      endTime: '15:00',
+      description: '',
+      location: '',
+      category: '',
+      repeat: {
+        type: 'weekly',
+        interval: 1,
+        endCount: 5, // 5번만 반복
+      },
+      notificationTime: 0,
+    };
+
+    // When: 반복 일정을 생성할 때
+    const endDate = new Date('2024-12-31'); // 충분히 먼 미래 날짜
+    const repeatDates = generateRepeatDates(baseEvent, endDate);
+
+    // Then: 지정한 횟수(5번)만큼의 일정들만 반환되어야 한다
+    const expectedDates = [
+      '2024-01-01', // 원본
+      '2024-01-08', // +1주
+      '2024-01-15', // +1주
+      '2024-01-22', // +1주
+      '2024-01-29', // +1주 (총 5개)
+    ];
+
+    expect(repeatDates).toEqual(expectedDates);
+    expect(repeatDates).toHaveLength(5);
+  });
+});
+
+describe('반복 간격 계산', () => {
+  test('매일 반복에 2일 간격이 적용된다', () => {
+    // Given: 매일 반복에 2일 간격 설정이 주어졌을 때
+    const baseEvent: Event = {
+      id: 'test-4',
+      title: '간격 테스트',
+      date: '2024-01-01',
+      startTime: '08:00',
+      endTime: '09:00',
+      description: '',
+      location: '',
+      category: '',
+      repeat: {
+        type: 'daily',
+        interval: 2, // 2일 간격
+        endDate: '2024-01-20',
+      },
+      notificationTime: 0,
+    };
+
+    // When: 10개의 반복 일정을 생성할 때
+    const endDate = new Date('2024-01-20');
+    const repeatDates = generateRepeatDates(baseEvent, endDate);
+
+    // Then: 2일씩 간격을 두고 일정이 생성되어야 한다
+    const expectedDates = [
+      '2024-01-01', // 원본 (1월 1일)
+      '2024-01-03', // +2일 (1월 3일)
+      '2024-01-05', // +2일 (1월 5일)
+      '2024-01-07', // +2일 (1월 7일)
+      '2024-01-09', // +2일 (1월 9일)
+      '2024-01-11', // +2일 (1월 11일)
+      '2024-01-13', // +2일 (1월 13일)
+      '2024-01-15', // +2일 (1월 15일)
+      '2024-01-17', // +2일 (1월 17일)
+      '2024-01-19', // +2일 (1월 19일)
+    ];
+
+    expect(repeatDates).toEqual(expectedDates);
+  });
+
+  test('주간 반복에 2주 간격이 적용된다', () => {
+    // Given: 주간 반복에 2주 간격 설정이 주어졌을 때
+    const baseEvent: Event = {
+      id: 'test-5',
+      title: '주간 간격 테스트',
+      date: '2024-01-01', // 월요일
+      startTime: '10:00',
+      endTime: '11:00',
+      description: '',
+      location: '',
+      category: '',
+      repeat: {
+        type: 'weekly',
+        interval: 2, // 2주 간격
+        endDate: '2024-02-29',
+      },
+      notificationTime: 0,
+    };
+
+    // When: 주간 반복 일정을 생성할 때
+    const endDate = new Date('2024-02-29');
+    const repeatDates = generateRepeatDates(baseEvent, endDate);
+
+    // Then: 2주씩 간격을 두고 일정이 생성되어야 한다
+    const expectedDates = [
+      '2024-01-01', // 원본 (1월 1일 월요일)
+      '2024-01-15', // +2주 (1월 15일 월요일)
+      '2024-01-29', // +2주 (1월 29일 월요일)
+      '2024-02-12', // +2주 (2월 12일 월요일)
+      '2024-02-26', // +2주 (2월 26일 월요일)
+    ];
+
+    expect(repeatDates).toEqual(expectedDates);
+  });
+});
+
+describe('반복 일정 전체 조작', () => {
+  test('반복 일정 전체 수정 시 모든 관련 일정이 업데이트된다', () => {
+    // Given: 반복 일정 그룹이 여러 개 있을 때
+    const events: Event[] = [
+      {
+        id: 'repeat-1',
+        title: '주간 회의',
+        date: '2024-01-01',
+        startTime: '10:00',
+        endTime: '11:00',
+        description: '',
+        location: '',
+        category: '',
+        repeat: { type: 'weekly', interval: 1 },
+        notificationTime: 10,
+      },
+      {
+        id: 'repeat-2',
+        title: '주간 회의',
+        date: '2024-01-08',
+        startTime: '10:00',
+        endTime: '11:00',
+        description: '',
+        location: '',
+        category: '',
+        repeat: { type: 'weekly', interval: 1 },
+        notificationTime: 10,
+      },
+      {
+        id: 'other-1',
+        title: '다른 일정',
+        date: '2024-01-05',
+        startTime: '14:00',
+        endTime: '15:00',
+        description: '',
+        location: '',
+        category: '',
+        repeat: { type: 'none', interval: 1 },
+        notificationTime: 5,
+      },
+    ];
+
+    // When: 반복 일정 전체를 수정할 때
+    const updates = {
+      title: '수정된 주간 회의',
+      startTime: '14:00',
+      endTime: '15:00',
+    };
+    const updatedEvents = updateAllRepeatEvents(events, '주간 회의', updates);
+
+    // Then: 같은 제목의 반복 일정들만 모두 수정되어야 한다
+    const weeklyEvents = updatedEvents.filter((event) => event.title === '수정된 주간 회의');
+    expect(weeklyEvents).toHaveLength(2);
+    expect(weeklyEvents[0].startTime).toBe('14:00');
+    expect(weeklyEvents[0].endTime).toBe('15:00');
+    expect(weeklyEvents[1].startTime).toBe('14:00');
+    expect(weeklyEvents[1].endTime).toBe('15:00');
+
+    // 다른 일정은 변경되지 않아야 한다
+    const otherEvent = updatedEvents.find((event) => event.id === 'other-1');
+    expect(otherEvent?.title).toBe('다른 일정');
+    expect(otherEvent?.startTime).toBe('14:00');
+  });
+
+  test('반복 일정 전체 삭제 시 모든 관련 일정이 제거된다', () => {
+    // Given: 반복 일정 그룹이 여러 개 있을 때
+    const events: Event[] = [
+      {
+        id: 'repeat-1',
+        title: '주간 회의',
+        date: '2024-01-01',
+        startTime: '10:00',
+        endTime: '11:00',
+        description: '',
+        location: '',
+        category: '',
+        repeat: { type: 'weekly', interval: 1 },
+        notificationTime: 10,
+      },
+      {
+        id: 'repeat-2',
+        title: '주간 회의',
+        date: '2024-01-08',
+        startTime: '10:00',
+        endTime: '11:00',
+        description: '',
+        location: '',
+        category: '',
+        repeat: { type: 'weekly', interval: 1 },
+        notificationTime: 10,
+      },
+      {
+        id: 'repeat-3',
+        title: '주간 회의',
+        date: '2024-01-15',
+        startTime: '10:00',
+        endTime: '11:00',
+        description: '',
+        location: '',
+        category: '',
+        repeat: { type: 'weekly', interval: 1 },
+        notificationTime: 10,
+      },
+      {
+        id: 'other-1',
+        title: '다른 일정',
+        date: '2024-01-05',
+        startTime: '14:00',
+        endTime: '15:00',
+        description: '',
+        location: '',
+        category: '',
+        repeat: { type: 'none', interval: 1 },
+        notificationTime: 5,
+      },
+    ];
+
+    // When: 반복 일정 전체를 삭제할 때
+    const updatedEvents = deleteAllRepeatEvents(events, '주간 회의');
+
+    // Then: 같은 제목의 반복 일정들만 모두 삭제되어야 한다
+    const weeklyEvents = updatedEvents.filter((event) => event.title === '주간 회의');
+    expect(weeklyEvents).toHaveLength(0);
+
+    // 다른 일정은 유지되어야 한다
+    expect(updatedEvents).toHaveLength(1);
+    expect(updatedEvents[0].title).toBe('다른 일정');
+  });
+});
+
+describe('예외 날짜 처리', () => {
+  test('반복 일정 중 특정 날짜가 제외된다', () => {
+    // Given: 반복 일정과 예외 날짜 목록이 주어졌을 때
+    const baseEvent: Event = {
+      id: 'exclude-test',
+      title: '예외 날짜 테스트',
+      date: '2024-01-01',
+      startTime: '10:00',
+      endTime: '11:00',
+      description: '',
+      location: '',
+      category: '',
+      repeat: {
+        type: 'weekly',
+        interval: 1,
+        endDate: '2024-02-29',
+        excludeDates: ['2024-01-15', '2024-01-29'], // 1월 15일, 29일 제외
+      },
+      notificationTime: 10,
+    };
+
+    // When: 반복 일정을 생성할 때
+    const endDate = new Date('2024-02-29');
+    const repeatDates = generateRepeatDates(baseEvent, endDate);
+
+    // Then: 예외 날짜는 제외된 일정 목록이 반환되어야 한다
+    const expectedDates = [
+      '2024-01-01', // 원본
+      '2024-01-08', // +1주
+      // '2024-01-15' 제외됨
+      '2024-01-22', // +1주
+      // '2024-01-29' 제외됨
+      '2024-02-05', // +1주
+      '2024-02-12', // +1주
+      '2024-02-19', // +1주
+      '2024-02-26', // +1주
+    ];
+
+    expect(repeatDates).toEqual(expectedDates);
+    // 제외된 날짜들이 포함되지 않았는지 확인
+    expect(repeatDates).not.toContain('2024-01-15');
+    expect(repeatDates).not.toContain('2024-01-29');
+  });
+
+  test('예외 날짜가 없으면 모든 반복 일정이 생성된다', () => {
+    // Given: 예외 날짜가 없는 반복 일정이 주어졌을 때
+    const baseEvent: Event = {
+      id: 'no-exclude-test',
+      title: '예외 날짜 없음 테스트',
+      date: '2024-01-01',
+      startTime: '14:00',
+      endTime: '15:00',
+      description: '',
+      location: '',
+      category: '',
+      repeat: {
+        type: 'weekly',
+        interval: 1,
+        endDate: '2024-01-29',
+        // excludeDates 없음
+      },
+      notificationTime: 5,
+    };
+
+    // When: 반복 일정을 생성할 때
+    const endDate = new Date('2024-01-29');
+    const repeatDates = generateRepeatDates(baseEvent, endDate);
+
+    // Then: 모든 반복 일정이 생성되어야 한다
+    const expectedDates = [
+      '2024-01-01', // 원본
+      '2024-01-08', // +1주
+      '2024-01-15', // +1주
+      '2024-01-22', // +1주
+      '2024-01-29', // +1주
+    ];
+
+    expect(repeatDates).toEqual(expectedDates);
+    expect(repeatDates).toHaveLength(5);
+  });
+});

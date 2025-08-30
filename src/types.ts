@@ -4,6 +4,8 @@ export interface RepeatInfo {
   type: RepeatType;
   interval: number;
   endDate?: string;
+  endCount?: number;
+  excludeDates?: string[];
 }
 
 export interface EventForm {

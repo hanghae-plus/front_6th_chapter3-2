@@ -1,4 +1,4 @@
-import { Event } from '../types.ts';
+import { Event, EventForm } from '../types.ts';
 
 /**
  * 주어진 년도와 월의 일수를 반환합니다.
@@ -107,4 +107,170 @@ export function formatDate(currentDate: Date, day?: number) {
     fillZero(currentDate.getMonth() + 1),
     fillZero(day ?? currentDate.getDate()),
   ].join('-');
+}
+
+export function generateRepeatDates(event: Event, endDate: Date): string[] {
+  const dates: string[] = [event.date];
+
+  // event.repeat.endDate가 있으면 더 이른 날짜를 사용
+  const effectiveEndDate = event.repeat.endDate
+    ? new Date(Math.min(new Date(event.repeat.endDate).getTime(), endDate.getTime()))
+    : endDate;
+
+  // endCount가 설정된 경우 횟수로 종료 조건을 제한
+  const maxCount = event.repeat.endCount || Infinity;
+
+  if (event.repeat.type === 'daily') {
+    const startDate = new Date(event.date);
+    let currentDate = new Date(startDate);
+
+    while (currentDate <= effectiveEndDate && dates.length < maxCount) {
+      currentDate.setDate(currentDate.getDate() + event.repeat.interval);
+
+      if (currentDate <= effectiveEndDate && dates.length < maxCount) {
+        const dateString = formatDate(currentDate);
+        dates.push(dateString);
+      }
+    }
+  } else if (event.repeat.type === 'weekly') {
+    const startDate = new Date(event.date);
+    let currentDate = new Date(startDate);
+
+    while (currentDate <= effectiveEndDate && dates.length < maxCount) {
+      currentDate.setDate(currentDate.getDate() + 7 * event.repeat.interval);
+
+      if (currentDate <= effectiveEndDate && dates.length < maxCount) {
+        const dateString = formatDate(currentDate);
+        dates.push(dateString);
+      }
+    }
+  } else if (event.repeat.type === 'monthly') {
+    const startDate = new Date(event.date);
+    const originalDay = startDate.getDate();
+    let currentDate = new Date(startDate);
+
+    while (currentDate <= effectiveEndDate && dates.length < maxCount) {
+      currentDate.setMonth(currentDate.getMonth() + event.repeat.interval);
+      currentDate.setDate(1);
+
+      const lastDayOfMonth = getDaysInMonth(currentDate.getFullYear(), currentDate.getMonth() + 1);
+
+      if (originalDay <= lastDayOfMonth) {
+        currentDate.setDate(originalDay);
+
+        if (currentDate <= effectiveEndDate && dates.length < maxCount) {
+          const dateString = formatDate(currentDate);
+          dates.push(dateString);
+        }
+      }
+    }
+  } else if (event.repeat.type === 'yearly') {
+    const startDate = new Date(event.date);
+    const originalMonth = startDate.getMonth();
+    const originalDay = startDate.getDate();
+    let currentYear = startDate.getFullYear();
+
+    while (dates.length < maxCount) {
+      currentYear += event.repeat.interval;
+
+      const candidateDate = new Date(currentYear, originalMonth, 1);
+      if (candidateDate > effectiveEndDate) break;
+
+      const lastDayOfMonth = getDaysInMonth(currentYear, originalMonth + 1);
+
+      if (originalDay <= lastDayOfMonth) {
+        candidateDate.setDate(originalDay);
+
+        if (candidateDate <= effectiveEndDate && dates.length < maxCount) {
+          const dateString = formatDate(candidateDate);
+          dates.push(dateString);
+        }
+      }
+    }
+  }
+
+  // 예외 날짜가 있다면 해당 날짜들을 제외
+  if (event.repeat.excludeDates && event.repeat.excludeDates.length > 0) {
+    return dates.filter((date) => !event.repeat.excludeDates?.includes(date));
+  }
+
+  return dates;
+}
+
+function generateId(): string {
+  return Math.random().toString(36).substr(2, 9);
+}
+
+export function createRepeatEvents(eventForm: EventForm): Event[] {
+  const baseEvent: Event = {
+    ...eventForm,
+    id: generateId(),
+  };
+
+  if (eventForm.repeat.type === 'none') {
+    return [baseEvent];
+  }
+
+  const endDate = eventForm.repeat.endDate
+    ? new Date(eventForm.repeat.endDate)
+    : new Date('2025-06-30');
+  const repeatDates = generateRepeatDates(baseEvent, endDate);
+
+  return repeatDates.map((date) => ({
+    ...baseEvent,
+    id: generateId(),
+    date,
+  }));
+}
+
+export function updateSingleRepeatEvent(
+  events: Event[],
+  eventId: string,
+  updates: Partial<Event>
+): Event[] {
+  return events.map((event) => {
+    if (event.id === eventId) {
+      return {
+        ...event,
+        ...updates,
+        repeat: { type: 'none', interval: 1 },
+      };
+    }
+    return event;
+  });
+}
+
+export function deleteSingleRepeatEvent(events: Event[], eventId: string): Event[] {
+  return events.filter((event) => event.id !== eventId);
+}
+
+export interface EventWithDisplay extends Event {
+  isRepeatEvent?: boolean;
+}
+
+export function markRepeatEvents(events: Event[]): EventWithDisplay[] {
+  return events.map((event) => ({
+    ...event,
+    isRepeatEvent: event.repeat.type !== 'none',
+  }));
+}
+
+export function updateAllRepeatEvents(
+  events: Event[],
+  targetTitle: string,
+  updates: Partial<Event>
+): Event[] {
+  return events.map((event) => {
+    if (event.title === targetTitle && event.repeat.type !== 'none') {
+      return {
+        ...event,
+        ...updates,
+      };
+    }
+    return event;
+  });
+}
+
+export function deleteAllRepeatEvents(events: Event[], targetTitle: string): Event[] {
+  return events.filter((event) => !(event.title === targetTitle && event.repeat.type !== 'none'));
 }

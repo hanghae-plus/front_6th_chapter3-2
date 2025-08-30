@@ -1,9 +1,16 @@
-import { Notifications, ChevronLeft, ChevronRight, Delete, Edit, Close } from '@mui/icons-material';
+import ChevronLeft from '@mui/icons-material/ChevronLeft';
+import ChevronRight from '@mui/icons-material/ChevronRight';
+import Close from '@mui/icons-material/Close';
+import Delete from '@mui/icons-material/Delete';
+import Edit from '@mui/icons-material/Edit';
+import Notifications from '@mui/icons-material/Notifications';
+import Repeat from '@mui/icons-material/Repeat';
 import {
   Alert,
   AlertTitle,
   Box,
   Button,
+  Chip,
   Checkbox,
   Dialog,
   DialogActions,
@@ -35,8 +42,7 @@ import { useEventForm } from './hooks/useEventForm.ts';
 import { useEventOperations } from './hooks/useEventOperations.ts';
 import { useNotifications } from './hooks/useNotifications.ts';
 import { useSearch } from './hooks/useSearch.ts';
-// import { Event, EventForm, RepeatType } from './types';
-import { Event, EventForm } from './types';
+import { Event, EventForm, RepeatType } from './types';
 import {
   formatDate,
   formatMonth,
@@ -44,6 +50,7 @@ import {
   getEventsForDay,
   getWeekDates,
   getWeeksAtMonth,
+  markRepeatEvents,
 } from './utils/dateUtils';
 import { findOverlappingEvents } from './utils/eventOverlap';
 import { getTimeErrorMessage } from './utils/timeValidation';
@@ -77,11 +84,17 @@ function App() {
     isRepeating,
     setIsRepeating,
     repeatType,
-    // setRepeatType,
+    setRepeatType,
     repeatInterval,
-    // setRepeatInterval,
+    setRepeatInterval,
     repeatEndDate,
-    // setRepeatEndDate,
+    setRepeatEndDate,
+    repeatEndCount,
+    setRepeatEndCount,
+    endType,
+    setEndType,
+    excludeDates,
+    setExcludeDates,
     notificationTime,
     setNotificationTime,
     startTimeError,
@@ -94,16 +107,23 @@ function App() {
     editEvent,
   } = useEventForm();
 
-  const { events, saveEvent, deleteEvent } = useEventOperations(Boolean(editingEvent), () =>
-    setEditingEvent(null)
+  const { events, saveEvent, deleteEvent, deleteAllRepeatEventsLocal } = useEventOperations(
+    Boolean(editingEvent),
+    () => setEditingEvent(null)
   );
 
   const { notifications, notifiedEvents, setNotifications } = useNotifications(events);
   const { view, setView, currentDate, holidays, navigate } = useCalendarView();
   const { searchTerm, filteredEvents, setSearchTerm } = useSearch(events, currentDate, view);
+  const markedEvents = markRepeatEvents(filteredEvents);
 
   const [isOverlapDialogOpen, setIsOverlapDialogOpen] = useState(false);
   const [overlappingEvents, setOverlappingEvents] = useState<Event[]>([]);
+  const [bulkOperationDialog, setBulkOperationDialog] = useState<{
+    open: boolean;
+    type: 'edit' | 'delete';
+    event: Event | null;
+  }>({ open: false, type: 'edit', event: null });
 
   const { enqueueSnackbar } = useSnackbar();
 
@@ -130,7 +150,10 @@ function App() {
       repeat: {
         type: isRepeating ? repeatType : 'none',
         interval: repeatInterval,
-        endDate: repeatEndDate || undefined,
+        endDate: isRepeating && endType === 'date' ? repeatEndDate || undefined : undefined,
+        endCount:
+          isRepeating && endType === 'count' ? Number(repeatEndCount) || undefined : undefined,
+        excludeDates: isRepeating && excludeDates.length > 0 ? excludeDates : undefined,
       },
       notificationTime,
     };
@@ -178,7 +201,7 @@ function App() {
                     <Typography variant="body2" fontWeight="bold">
                       {date.getDate()}
                     </Typography>
-                    {filteredEvents
+                    {markedEvents
                       .filter(
                         (event) => new Date(event.date).toDateString() === date.toDateString()
                       )
@@ -201,6 +224,7 @@ function App() {
                           >
                             <Stack direction="row" spacing={1} alignItems="center">
                               {isNotified && <Notifications fontSize="small" />}
+                              {event.isRepeatEvent && <Repeat fontSize="small" color="action" />}
                               <Typography
                                 variant="caption"
                                 noWrap
@@ -269,7 +293,7 @@ function App() {
                                 {holiday}
                               </Typography>
                             )}
-                            {getEventsForDay(filteredEvents, day).map((event) => {
+                            {getEventsForDay(markedEvents, day).map((event) => {
                               const isNotified = notifiedEvents.includes(event.id);
                               return (
                                 <Box
@@ -288,6 +312,9 @@ function App() {
                                 >
                                   <Stack direction="row" spacing={1} alignItems="center">
                                     {isNotified && <Notifications fontSize="small" />}
+                                    {event.isRepeatEvent && (
+                                      <Repeat fontSize="small" color="action" />
+                                    )}
                                     <Typography
                                       variant="caption"
                                       noWrap
@@ -438,7 +465,7 @@ function App() {
           </FormControl>
 
           {/* ! 반복은 8주차 과제에 포함됩니다. 구현하고 싶어도 참아주세요~ */}
-          {/* {isRepeating && (
+          {isRepeating && (
             <Stack spacing={2}>
               <FormControl fullWidth>
                 <FormLabel>반복 유형</FormLabel>
@@ -465,17 +492,85 @@ function App() {
                   />
                 </FormControl>
                 <FormControl fullWidth>
-                  <FormLabel>반복 종료일</FormLabel>
+                  <FormLabel>반복 종료 조건</FormLabel>
+                  <Select
+                    size="small"
+                    value={endType}
+                    onChange={(e) => setEndType(e.target.value as 'date' | 'count' | 'never')}
+                  >
+                    <MenuItem value="never">종료 없음</MenuItem>
+                    <MenuItem value="date">특정 날짜까지</MenuItem>
+                    <MenuItem value="count">특정 횟수만큼</MenuItem>
+                  </Select>
+                </FormControl>
+                {endType === 'date' && (
+                  <FormControl fullWidth>
+                    <FormLabel>종료 날짜</FormLabel>
+                    <TextField
+                      size="small"
+                      type="date"
+                      value={repeatEndDate}
+                      onChange={(e) => setRepeatEndDate(e.target.value)}
+                    />
+                  </FormControl>
+                )}
+                {endType === 'count' && (
+                  <FormControl fullWidth>
+                    <FormLabel>반복 횟수</FormLabel>
+                    <TextField
+                      size="small"
+                      type="number"
+                      value={repeatEndCount}
+                      onChange={(e) => setRepeatEndCount(e.target.value)}
+                      slotProps={{ htmlInput: { min: 1 } }}
+                    />
+                  </FormControl>
+                )}
+              </Stack>
+            </Stack>
+          )}
+
+          {isRepeating && (
+            <Stack spacing={2}>
+              <Typography variant="h6">예외 날짜</Typography>
+              <Box>
+                <Stack direction="row" spacing={2} alignItems="center" mb={2}>
                   <TextField
                     size="small"
                     type="date"
-                    value={repeatEndDate}
-                    onChange={(e) => setRepeatEndDate(e.target.value)}
+                    label="제외할 날짜"
+                    InputLabelProps={{ shrink: true }}
+                    onChange={(e) => {
+                      const newDate = e.target.value;
+                      if (newDate && !excludeDates.includes(newDate)) {
+                        setExcludeDates([...excludeDates, newDate]);
+                      }
+                    }}
                   />
-                </FormControl>
-              </Stack>
+                  <Typography variant="body2" color="text.secondary">
+                    제외할 날짜를 선택하세요
+                  </Typography>
+                </Stack>
+                {excludeDates.length > 0 && (
+                  <Stack spacing={1}>
+                    <Typography variant="subtitle2">제외된 날짜들:</Typography>
+                    <Stack direction="row" spacing={1} flexWrap="wrap">
+                      {excludeDates.map((date, index) => (
+                        <Chip
+                          key={index}
+                          label={date}
+                          onDelete={() => {
+                            setExcludeDates(excludeDates.filter((_, i) => i !== index));
+                          }}
+                          size="small"
+                        />
+                      ))}
+                    </Stack>
+                  </Stack>
+                )}
+              </Box>
             </Stack>
-          )} */}
+          )}
 
           <Button
             data-testid="event-submit-button"
@@ -532,15 +627,16 @@ function App() {
             />
           </FormControl>
 
-          {filteredEvents.length === 0 ? (
+          {markedEvents.length === 0 ? (
             <Typography>검색 결과가 없습니다.</Typography>
           ) : (
-            filteredEvents.map((event) => (
+            markedEvents.map((event) => (
               <Box key={event.id} sx={{ border: 1, borderRadius: 2, p: 3, width: '100%' }}>
                 <Stack direction="row" justifyContent="space-between">
                   <Stack>
                     <Stack direction="row" spacing={1} alignItems="center">
                       {notifiedEvents.includes(event.id) && <Notifications color="error" />}
+                      {event.isRepeatEvent && <Repeat color="action" />}
                       <Typography
                         fontWeight={notifiedEvents.includes(event.id) ? 'bold' : 'normal'}
                         color={notifiedEvents.includes(event.id) ? 'error' : 'inherit'}
@@ -576,10 +672,36 @@ function App() {
                     </Typography>
                   </Stack>
                   <Stack>
-                    <IconButton aria-label="Edit event" onClick={() => editEvent(event)}>
+                    <IconButton
+                      aria-label="Edit event"
+                      onClick={() => {
+                        if (event.repeat.type !== 'none') {
+                          setBulkOperationDialog({
+                            open: true,
+                            type: 'edit',
+                            event,
+                          });
+                        } else {
+                          editEvent(event);
+                        }
+                      }}
+                    >
                       <Edit />
                     </IconButton>
-                    <IconButton aria-label="Delete event" onClick={() => deleteEvent(event.id)}>
+                    <IconButton
+                      aria-label="Delete event"
+                      onClick={() => {
+                        if (event.repeat.type !== 'none') {
+                          setBulkOperationDialog({
+                            open: true,
+                            type: 'delete',
+                            event,
+                          });
+                        } else {
+                          deleteEvent(event.id);
+                        }
+                      }}
+                    >
                       <Delete />
                     </IconButton>
                   </Stack>
@@ -622,12 +744,68 @@ function App() {
                   type: isRepeating ? repeatType : 'none',
                   interval: repeatInterval,
                   endDate: repeatEndDate || undefined,
+                  endCount: endType === 'count' ? Number(repeatEndCount) || undefined : undefined,
+                  excludeDates: isRepeating && excludeDates.length > 0 ? excludeDates : undefined,
                 },
                 notificationTime,
               });
             }}
           >
             계속 진행
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={bulkOperationDialog.open}
+        onClose={() => setBulkOperationDialog({ open: false, type: 'edit', event: null })}
+      >
+        <DialogTitle>
+          {bulkOperationDialog.type === 'edit' ? '반복 일정 수정' : '반복 일정 삭제'}
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            이 일정은 반복 일정입니다. 어떤 작업을 수행하시겠습니까?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setBulkOperationDialog({ open: false, type: 'edit', event: null });
+            }}
+          >
+            취소
+          </Button>
+          <Button
+            onClick={() => {
+              if (bulkOperationDialog.event) {
+                if (bulkOperationDialog.type === 'edit') {
+                  editEvent(bulkOperationDialog.event);
+                } else {
+                  deleteEvent(bulkOperationDialog.event.id);
+                }
+              }
+              setBulkOperationDialog({ open: false, type: 'edit', event: null });
+            }}
+          >
+            이 일정만 {bulkOperationDialog.type === 'edit' ? '수정' : '삭제'}
+          </Button>
+          <Button
+            color={bulkOperationDialog.type === 'delete' ? 'error' : 'primary'}
+            onClick={() => {
+              if (bulkOperationDialog.event) {
+                if (bulkOperationDialog.type === 'edit') {
+                  // For bulk edit, just open the normal edit form for now
+                  // Future enhancement could implement true bulk editing
+                  editEvent(bulkOperationDialog.event);
+                } else {
+                  deleteAllRepeatEventsLocal(bulkOperationDialog.event.title);
+                }
+              }
+              setBulkOperationDialog({ open: false, type: 'edit', event: null });
+            }}
+          >
+            모든 반복 일정 {bulkOperationDialog.type === 'edit' ? '수정' : '삭제'}
           </Button>
         </DialogActions>
       </Dialog>
