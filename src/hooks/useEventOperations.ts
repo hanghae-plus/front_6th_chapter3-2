@@ -69,6 +69,29 @@ export const useEventOperations = (editing: boolean, onSave?: () => void) => {
     }
   };
 
+  const saveRepeatedEvents = async (events: Event[]) => {
+    try {
+      const response = await fetch('/api/events-list', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ events }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save repeated events');
+      }
+
+      await fetchEvents();
+      onSave?.();
+      enqueueSnackbar(`${events.length}개의 반복 일정이 추가되었습니다.`, {
+        variant: 'success',
+      });
+    } catch (error) {
+      console.error('Error saving repeated events:', error);
+      enqueueSnackbar('반복 일정 저장 실패', { variant: 'error' });
+    }
+  };
+
   async function init() {
     await fetchEvents();
     enqueueSnackbar('일정 로딩 완료!', { variant: 'info' });
@@ -79,5 +102,5 @@ export const useEventOperations = (editing: boolean, onSave?: () => void) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { events, fetchEvents, saveEvent, deleteEvent };
+  return { events, fetchEvents, saveEvent, deleteEvent, saveRepeatedEvents };
 };

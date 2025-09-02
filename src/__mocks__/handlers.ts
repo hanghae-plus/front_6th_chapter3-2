@@ -36,4 +36,16 @@ export const handlers = [
 
     return new HttpResponse(null, { status: 404 });
   }),
+
+  // 반복 일정 생성용 엔드포인트
+  http.post('/api/events-list', async ({ request }) => {
+    const { events: newEvents } = (await request.json()) as { events: Event[] };
+    // 각 이벤트에 ID 할당
+    const eventsWithIds = newEvents.map((event, index) => ({
+      ...event,
+      id: String(events.length + index + 1),
+    }));
+
+    return HttpResponse.json(eventsWithIds, { status: 201 });
+  }),
 ];

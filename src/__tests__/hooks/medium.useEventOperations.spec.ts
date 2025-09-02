@@ -171,3 +171,89 @@ it("네트워크 오류 시 '일정 삭제 실패'라는 텍스트가 노출되�
 
   expect(result.current.events).toHaveLength(1);
 });
+
+// 반복 일정 관련 테스트
+it('반복 일정을 성공적으로 저장한다', async () => {
+  const mockRepeatedEvents = [
+    {
+      id: 'repeat-1',
+      title: '반복 일정',
+      date: '2024-01-01',
+      startTime: '09:00',
+      endTime: '10:00',
+      description: '',
+      location: '',
+      category: '업무',
+      repeat: { type: 'daily' as const, interval: 1, id: 'repeat-series-1' },
+      notificationTime: 10,
+    },
+    {
+      id: 'repeat-2',
+      title: '반복 일정',
+      date: '2024-01-02',
+      startTime: '09:00',
+      endTime: '10:00',
+      description: '',
+      location: '',
+      category: '업무',
+      repeat: { type: 'daily' as const, interval: 1, id: 'repeat-series-1' },
+      notificationTime: 10,
+    },
+  ];
+
+  server.use(
+    http.post('/api/events-list', () => {
+      return HttpResponse.json(mockRepeatedEvents, { status: 201 });
+    }),
+    http.get('/api/events', () => {
+      return HttpResponse.json({ events: mockRepeatedEvents });
+    })
+  );
+
+  const { result } = renderHook(() => useEventOperations(false));
+
+  await act(() => Promise.resolve(null));
+
+  await act(async () => {
+    await result.current.saveRepeatedEvents(mockRepeatedEvents);
+  });
+
+  expect(enqueueSnackbarFn).toHaveBeenCalledWith('2개의 반복 일정이 추가되었습니다.', {
+    variant: 'success',
+  });
+
+  expect(result.current.events).toHaveLength(2);
+});
+
+it('반복 일정 저장 실패 시 에러 메시지를 표시한다', async () => {
+  const mockRepeatedEvents = [
+    {
+      id: 'repeat-1',
+      title: '반복 일정',
+      date: '2024-01-01',
+      startTime: '09:00',
+      endTime: '10:00',
+      description: '',
+      location: '',
+      category: '업무',
+      repeat: { type: 'daily' as const, interval: 1, id: 'repeat-series-1' },
+      notificationTime: 10,
+    },
+  ];
+
+  server.use(
+    http.post('/api/events-list', () => {
+      return HttpResponse.json({ error: 'Server error' }, { status: 500 });
+    })
+  );
+
+  const { result } = renderHook(() => useEventOperations(false));
+
+  await act(() => Promise.resolve(null));
+
+  await act(async () => {
+    await result.current.saveRepeatedEvents(mockRepeatedEvents);
+  });
+
+  expect(enqueueSnackbarFn).toHaveBeenCalledWith('반복 일정 저장 실패', { variant: 'error' });
+});

@@ -92,3 +92,97 @@ export const setupMockHandlerDeletion = () => {
     })
   );
 };
+
+// 반복 일정 생성 테스트용 핸들러
+export const setupMockHandlerRepeatCreation = () => {
+  let mockEvents: Event[] = []; // 빈 배열로 시작
+
+  server.use(
+    http.get('/api/events', () => {
+      return HttpResponse.json({ events: mockEvents });
+    }),
+    http.post('/api/events-list', async ({ request }) => {
+      const { events } = (await request.json()) as { events: Event[] };
+      // 생성된 반복 일정들을 mockEvents에 추가
+      mockEvents.push(...events);
+      return HttpResponse.json(events, { status: 201 });
+    })
+  );
+};
+
+// 반복 일정 수정 테스트용 핸들러
+export const setupMockHandlerRepeatUpdate = () => {
+  let mockEvents: Event[] = [
+    {
+      id: 'repeat-1',
+      title: '매일 운동',
+      date: '2025-10-01',
+      startTime: '07:00',
+      endTime: '08:00',
+      description: '매일 운동하기',
+      location: '헬스장',
+      category: '개인',
+      repeat: { type: 'daily', interval: 1, id: 'repeat-series-1' },
+      notificationTime: 10,
+    },
+  ];
+
+  server.use(
+    http.get('/api/events', () => {
+      return HttpResponse.json({ events: mockEvents });
+    }),
+    http.put('/api/events/repeat-1', async ({ request }) => {
+      const updatedEvent = (await request.json()) as Event;
+      // mockEvents 배열에서 해당 이벤트를 찾아서 업데이트
+      const index = mockEvents.findIndex((event) => event.id === updatedEvent.id);
+      if (index !== -1) {
+        mockEvents[index] = updatedEvent;
+      }
+      return HttpResponse.json(updatedEvent);
+    })
+  );
+};
+
+// 반복 일정 삭제 테스트용 핸들러
+export const setupMockHandlerRepeatDeletion = () => {
+  let mockEvents: Event[] = [
+    {
+      id: 'repeat-1',
+      title: '매일 운동',
+      date: '2025-10-01',
+      startTime: '07:00',
+      endTime: '08:00',
+      description: '매일 운동하기',
+      location: '헬스장',
+      category: '개인',
+      repeat: { type: 'daily', interval: 1, id: 'repeat-series-1' },
+      notificationTime: 10,
+    },
+    {
+      id: 'repeat-2',
+      title: '매일 운동',
+      date: '2025-10-02',
+      startTime: '07:00',
+      endTime: '08:00',
+      description: '매일 운동하기',
+      location: '헬스장',
+      category: '개인',
+      repeat: { type: 'daily', interval: 1, id: 'repeat-series-1' },
+      notificationTime: 10,
+    },
+  ];
+
+  server.use(
+    http.get('/api/events', () => {
+      return HttpResponse.json({ events: mockEvents });
+    }),
+    http.delete('/api/events/repeat-1', () => {
+      mockEvents = mockEvents.filter((event) => event.id !== 'repeat-1');
+      return new HttpResponse(null, { status: 204 });
+    }),
+    // 삭제 후 GET 요청에 대한 응답
+    http.get('/api/events', () => {
+      return HttpResponse.json({ events: mockEvents });
+    })
+  );
+};
